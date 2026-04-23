@@ -1,36 +1,101 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Light Knitting Chart
 
-## Getting Started
+Light Knitting Chart(LNC)는 로그인 없이 바로 사용할 수 있는 뜨개 기호 및 컬러 차트 드로잉 툴입니다. 사용자는 코(stiches)와 단(rows)을 기준으로 캔버스를 만들고, 도트 형태의 그리드 위에 색상과 뜨개 기호를 그린 뒤 이미지로 저장할 수 있습니다.
 
-First, run the development server:
+- 기본 사용 환경 기준
+  - 태블릿 landscape
+  - 라이트 모드
+  - 터치 기반 편집 흐름 우선
+
+## Product Overview
+
+Light Knitting Chart의 핵심 목표는 뜨개 도안 작성자가 복잡한 디자인 도구 없이도 빠르게 차트를 만들고, 참조 이미지와 직접 그린 레이어를 함께 관리하며, 완성된 차트를 로컬 이미지로 저장할 수 있게 하는 것입니다.
+
+핵심 사용자 흐름은 다음과 같습니다.
+
+1. 앱 접속 후 로그인 없이 메인 화면에 진입합니다.
+2. 코 수와 단 수를 정수로 입력해 캔버스를 생성합니다.
+3. 캔버스 위에 배경색 또는 뜨개 기호를 그립니다.
+4. 필요하면 참조 이미지를 이미지 레이어로 추가합니다.
+5. 레이어의 순서, 표시 여부, 투명도, 이름, 크기를 조정합니다.
+6. 편집 상태는 localStorage에 자동 보존됩니다.
+7. 저장 버튼을 누른 시점에만 현재 캔버스를 PNG 이미지로 다운로드합니다.
+
+## PRD
+
+### Problem
+
+뜨개 차트와 컬러 차트를 만들 때 범용 그래픽 도구는 코/단 단위의 그리드, 뜨개 기호, 레이어별 참조 이미지 관리, 오른쪽 아래 기준 번호 표시 같은 도메인 요구를 직접 지원하지 않습니다. 이 앱은 뜨개 차트 작성에 필요한 최소 기능을 한 화면에서 빠르게 사용할 수 있도록 만드는 것을 목표로 합니다.
+
+### Target Users
+
+- 뜨개 도안을 직접 작성하는 사용자
+- 컬러 차트를 도트 형태로 만들고 싶은 사용자
+- 참조 이미지를 보며 차트를 옮겨 그리는 사용자
+- 태블릿에서 터치 기반으로 차트를 편집하려는 사용자
+
+## Implemented Features
+
+- 코/단 정수 입력으로 캔버스를 생성합니다.
+- `<canvas>` 태그 기반으로 픽셀 그리드를 렌더링합니다.
+- 각 셀은 배경색과 심볼 배치를 분리해서 관리합니다.
+- 캔버스 왼쪽에는 단 수, 아래쪽에는 코 수를 표시합니다.
+- 오른쪽 아래 기준으로 10코/10단마다 강조선을 표시합니다.
+- 태블릿 사용을 고려해 캔버스를 중앙 정렬하고 핀치 줌을 지원합니다.
+- 이미지 레이어와 드로잉 레이어를 구분합니다.
+- 레이어 목록에서 썸네일, 이름, 보이기/안보기 상태를 확인할 수 있습니다.
+- 레이어는 드래그 앤 드롭으로 순서를 바꿀 수 있습니다.
+- 레이어 컨텍스트 메뉴에서 투명도, 이름 변경, 삭제, 복제, 병합, 이미지 크기 조정을 수행합니다.
+- 툴바 버튼 정의는 객체 기반으로 관리합니다.
+- 도구 상태와 패널 상태는 `useCanvasTool`에서 관리합니다.
+- 캔버스 편집 상태와 레이어 상태는 `useCanvasStore`에서 관리합니다.
+- 편집 상태는 `light-knitting-chart:latest` 키로 localStorage에 자동 저장됩니다.
+- PNG 이미지 다운로드는 저장 버튼 클릭 시에만 실행됩니다.
+
+## Technical Architecture
+
+- Framework: Next.js 16 App Router
+- UI: React 19
+- Styling: Tailwind CSS
+- State Management: Zustand
+- Icons: lucide-react
+- Asset Conversion: potrace
+- Canvas Rendering: HTML `<canvas>`
+- Persistence: localStorage
+
+주요 상태 분리:
+
+- `src/stores/useCanvasStore.ts`
+  - 캔버스 크기, 제목, 레이어, 활성 레이어, 편집 데이터, undo/redo를 관리합니다.
+- `src/stores/useCanvasTool.tsx`
+  - 활성 도구, 패널 모드, 커서, 줌, 저장 요청, 심볼 선택, 색상, 지우개 모드를 관리합니다.
+- `src/types/canvas.ts`
+  - 캔버스 snapshot, 레이어, 셀, 배치된 심볼 타입을 정의합니다.
+
+## Validation Checklist
+
+기본 확인:
+
+- `npm run lint`가 통과해야 합니다.
+- 앱 첫 로드 시 PNG 다운로드가 자동으로 발생하지 않아야 합니다.
+- 캔버스에 그릴 때 localStorage의 편집 상태만 갱신되어야 합니다.
+- 저장 버튼을 클릭할 때만 PNG 다운로드가 발생해야 합니다.
+- 코/단 번호는 캔버스 크기 변경 후에도 오른쪽 아래 기준으로 표시되어야 합니다.
+- 10코/10단 강조선은 기본선보다 명확히 진해야 합니다.
+
+심볼 브러시 확인:
+
+- SVG 심볼을 선택할 수 있어야 합니다.
+- 알파벳 심볼을 최대 3글자까지 추가할 수 있어야 합니다.
+- 추가된 알파벳 심볼은 선택 목록에 포함되고 즉시 선택되어야 합니다.
+- 멀티셀 심볼은 지정된 span 기준으로 배치되어야 합니다.
+- 심볼이 캔버스 밖으로 일부 나가도 보이는 영역만 렌더링되어야 합니다.
+- 겹치는 심볼은 새 심볼이 덮어써야 합니다.
+- 점유 셀 어디에서 지워도 심볼 전체가 삭제되어야 합니다.
+
+## Run Locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
