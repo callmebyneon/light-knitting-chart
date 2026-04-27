@@ -57,6 +57,15 @@ export default function LayerStackArea({
     [contextMenu?.layerId, layers],
   );
 
+  function clearLongPressTimer() {
+    if (!longPressTimerRef.current) {
+      return;
+    }
+
+    clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = null;
+  }
+
   useEffect(() => {
     if (!contextMenu || !contextMenuRef.current) {
       return;
@@ -98,6 +107,8 @@ export default function LayerStackArea({
             layer.type === 'drawing' ? layer.cells.find((cell) => cell.backgroundColor !== '#ffffff') : null;
           const previewSymbol = layer.type === 'drawing' ? layer.placedSymbols[0] ?? null : null;
           const mergeTargetIndex = layers.findIndex((candidate) => candidate.id === layer.id);
+          const previousLayer = mergeTargetIndex > 0 ? layers[mergeTargetIndex - 1] : null;
+          const nextLayer = mergeTargetIndex >= 0 && mergeTargetIndex < layers.length - 1 ? layers[mergeTargetIndex + 1] : null;
           const canMergeDown =
             layer.type !== 'image' &&
             mergeTargetIndex >= 0 &&
@@ -125,11 +136,9 @@ export default function LayerStackArea({
                   openContextMenu(layer.id, touch.clientX, touch.clientY);
                 }, 450);
               }}
-              onTouchEnd={() => {
-                if (longPressTimerRef.current) {
-                  clearTimeout(longPressTimerRef.current);
-                }
-              }}
+              onTouchMove={clearLongPressTimer}
+              onTouchEnd={clearLongPressTimer}
+              onTouchCancel={clearLongPressTimer}
               onDragOver={(event: DragEvent<HTMLDivElement>) => event.preventDefault()}
               onDrop={() => {
                 if (!dragLayerId) {
@@ -147,6 +156,13 @@ export default function LayerStackArea({
                 className="flex h-10 w-5 shrink-0 cursor-grab items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing"
                 onClick={(event) => event.stopPropagation()}
                 onContextMenu={(event) => event.stopPropagation()}
+                onTouchStart={(event) => {
+                  event.stopPropagation();
+                  clearLongPressTimer();
+                }}
+                onTouchMove={(event) => event.stopPropagation()}
+                onTouchEnd={(event) => event.stopPropagation()}
+                onTouchCancel={(event) => event.stopPropagation()}
                 onDragStart={(event: DragEvent<HTMLButtonElement>) => {
                   event.stopPropagation();
                   event.dataTransfer.effectAllowed = 'move';
@@ -218,7 +234,7 @@ export default function LayerStackArea({
                   />
                   <div
                     ref={contextMenuRef}
-                    className="fixed z-20 flex w-72 flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_18px_50px_rgba(15,23,42,0.18)]"
+                    className="fixed z-20 flex w-72 max-h-120 overflow-y-auto flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_18px_50px_rgba(15,23,42,0.18)]"
                     style={{
                       left: contextMenu.x,
                       top: contextMenu.y,
@@ -284,6 +300,36 @@ export default function LayerStackArea({
                     <div className="flex flex-col gap-2">
                       <button
                         type="button"
+                        disabled={!previousLayer}
+                        className={`${contextMenuClassName} disabled:cursor-not-allowed disabled:text-slate-300`}
+                        onClick={() => {
+                          if (!previousLayer) {
+                            return;
+                          }
+
+                          moveLayer(contextLayer.id, previousLayer.id);
+                          setContextMenu(null);
+                        }}
+                      >
+                        위로 이동
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!nextLayer}
+                        className={`${contextMenuClassName} disabled:cursor-not-allowed disabled:text-slate-300`}
+                        onClick={() => {
+                          if (!nextLayer) {
+                            return;
+                          }
+
+                          moveLayer(contextLayer.id, nextLayer.id);
+                          setContextMenu(null);
+                        }}
+                      >
+                        아래로 이동
+                      </button>
+                      <button
+                        type="button"
                         className={contextMenuClassName}
                         onClick={() => {
                           const nextName = window.prompt('레이어 이름을 입력하세요.', contextLayer.name);
@@ -325,7 +371,7 @@ export default function LayerStackArea({
                       <button
                         type="button"
                         disabled={!canMergeDown}
-                        className={`${contextMenuClassName} disabled:cursor-not-allowed disabled:border-slate-100 disabled:text-slate-300`}
+                        className={`${contextMenuClassName} disabled:cursor-not-allowed disabled:text-slate-300`}
                         onClick={() => mergeLayerDown(contextLayer.id)}
                       >
                         아래 레이어와 합치기
