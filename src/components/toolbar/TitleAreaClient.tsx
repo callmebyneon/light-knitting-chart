@@ -1,6 +1,6 @@
 'use client';
 
-import { buttonClassName, inputClassBarebone } from '@/components/ui/sharedStyles';
+import { inputClassBarebone } from '@/components/ui/sharedStyles';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useState } from 'react';
 import Modal from '../ui/widgets/Modal';
