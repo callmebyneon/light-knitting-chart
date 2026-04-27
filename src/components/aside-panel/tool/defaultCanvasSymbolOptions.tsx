@@ -17,10 +17,10 @@ export const defaultCanvasSymbolOptions: CanvasSymbolOption[] = defaultSymbolIds
     id: icon.id,
     label: icon.label,
     kind: 'svg',
-    text: icon.text,
     spanColumns: icon.spanColumns,
     spanRows: icon.spanRows,
     pathData: icon.pathData,
+    fillRule: icon.fillRule,
     draw: createPathSymbolRenderer(icon.pathData, icon.spanColumns, icon.spanRows),
   };
 });

@@ -2,7 +2,16 @@
 
 import { create } from 'zustand';
 
-import { CanvasSnapshot, DrawingCell, DrawingLayer, ImageLayer, Layer, PlacedSymbol, ResizeOrigin } from '@/types/canvas';
+import {
+  CanvasSnapshot,
+  CellSelection,
+  DrawingCell,
+  DrawingLayer,
+  ImageLayer,
+  Layer,
+  PlacedSymbol,
+  ResizeOrigin,
+} from '@/types/canvas';
 
 const blankCellColor = '#ffffff';
 const baseCellSize = 24;
@@ -18,15 +27,26 @@ type SymbolPlacementInput = {
 type CanvasStore = CanvasSnapshot & {
   historyPast: CanvasSnapshot[];
   historyFuture: CanvasSnapshot[];
+  selection: CellSelection | null;
   createCanvas: (rows: number, stiches: number) => void;
   resizeCanvas: (rows: number, stiches: number, origin: ResizeOrigin) => void;
   setResizeOrigin: (origin: ResizeOrigin) => void;
   setTitle: (title: string) => void;
+  setCanvasBackgroundColor: (color: string) => void;
+  setSelection: (selection: CellSelection | null) => void;
+  clearSelection: () => void;
   paintSymbolCell: (row: number, column: number, symbol: SymbolPlacementInput) => void;
   paintBackgroundCell: (row: number, column: number, backgroundColor: string) => void;
   eraseCellSymbol: (row: number, column: number) => void;
   eraseCellBackground: (row: number, column: number) => void;
   clearCell: (row: number, column: number) => void;
+  moveActiveDrawingLayer: (rowDelta: number, columnDelta: number) => void;
+  moveActiveImageLayer: (offsetXDelta: number, offsetYDelta: number) => void;
+  flipActiveLayerHorizontally: () => void;
+  flipActiveLayerVertically: () => void;
+  flipSelectionHorizontally: () => void;
+  flipSelectionVertically: () => void;
+  duplicateSelection: () => void;
   addDrawingLayer: () => void;
   addImageLayer: (payload: {
     name: string;
@@ -98,6 +118,7 @@ function snapshotFromState(state: CanvasSnapshot): CanvasSnapshot {
     rows: state.rows,
     stiches: state.stiches,
     hasCanvas: state.hasCanvas,
+    canvasBackgroundColor: state.canvasBackgroundColor,
     resizeOrigin: state.resizeOrigin,
     layers: state.layers.map(cloneLayer),
     activeLayerId: state.activeLayerId,
@@ -213,33 +234,98 @@ function getResizeOffsets(current: number, next: number, placement: 'start' | 'c
   };
 }
 
+function normalizeSelection(selection: CellSelection) {
+  return {
+    top: Math.min(selection.top, selection.bottom),
+    left: Math.min(selection.left, selection.right),
+    bottom: Math.max(selection.top, selection.bottom),
+    right: Math.max(selection.left, selection.right),
+  };
+}
+
+function symbolIsInsideSelection(symbol: PlacedSymbol, selection: CellSelection) {
+  return (
+    symbol.row >= selection.top &&
+    symbol.column >= selection.left &&
+    symbol.row + symbol.spanRows - 1 <= selection.bottom &&
+    symbol.column + symbol.spanColumns - 1 <= selection.right
+  );
+}
+
+function moveDrawingLayerContent(
+  layer: DrawingLayer,
+  rows: number,
+  stiches: number,
+  rowDelta: number,
+  columnDelta: number,
+) {
+  if (rowDelta === 0 && columnDelta === 0) {
+    return layer;
+  }
+
+  const nextCells = Array.from({ length: rows * stiches }, () => createBlankCell());
+
+  for (let sourceRow = 0; sourceRow < rows; sourceRow += 1) {
+    for (let sourceColumn = 0; sourceColumn < stiches; sourceColumn += 1) {
+      const nextRow = sourceRow + rowDelta;
+      const nextColumn = sourceColumn + columnDelta;
+
+      if (nextRow < 0 || nextRow >= rows || nextColumn < 0 || nextColumn >= stiches) {
+        continue;
+      }
+
+      nextCells[getCellIndex(nextRow, nextColumn, stiches)] =
+        cloneCell(layer.cells[getCellIndex(sourceRow, sourceColumn, stiches)] ?? createBlankCell());
+    }
+  }
+
+  return {
+    ...layer,
+    cells: nextCells,
+    placedSymbols: layer.placedSymbols
+      .map((symbol) => ({
+        ...symbol,
+        row: symbol.row + rowDelta,
+        column: symbol.column + columnDelta,
+      }))
+      .filter((symbol) => symbolHasVisibleArea(symbol, rows, stiches)),
+  };
+}
+
 function createInitialSnapshot(): CanvasSnapshot {
   const stiches = 24;
   const rows = 32;
-  const initialLayer = createDrawingLayer(stiches, rows, '드로잉 레이어 1');
+  const initialLayer = createDrawingLayer(stiches, rows, '레이어 1');
 
   return {
     title: '새 차트',
     rows,
     stiches,
     hasCanvas: true,
+    canvasBackgroundColor: '#ffffff',
     resizeOrigin: 'center',
     layers: [initialLayer],
     activeLayerId: initialLayer.id,
   };
 }
 
-function commitSnapshot(state: CanvasStore, nextSnapshot: CanvasSnapshot) {
+function commitSnapshot(
+  state: CanvasStore,
+  nextSnapshot: CanvasSnapshot,
+  selection: CellSelection | null = state.selection,
+) {
   return {
     ...snapshotFromState(nextSnapshot),
     historyPast: [...state.historyPast, snapshotFromState(state)],
     historyFuture: [],
+    selection,
   };
 }
 
 function updateDrawingLayer(
   state: CanvasStore,
   updater: (layer: DrawingLayer) => DrawingLayer,
+  selection: CellSelection | null = state.selection,
 ) {
   const layerIndex = state.activeLayerId ? getDrawingLayerIndex(state.layers, state.activeLayerId) : -1;
 
@@ -254,39 +340,58 @@ function updateDrawingLayer(
     return state;
   }
 
-  return commitSnapshot(state, {
-    title: state.title,
-    rows: state.rows,
-    stiches: state.stiches,
-    hasCanvas: state.hasCanvas,
-    resizeOrigin: state.resizeOrigin,
-    layers: state.layers.map((layer, index) => (index === layerIndex ? nextLayer : layer)),
-    activeLayerId: state.activeLayerId,
-  });
+  return commitSnapshot(
+    state,
+    {
+      title: state.title,
+      rows: state.rows,
+      stiches: state.stiches,
+      hasCanvas: state.hasCanvas,
+      canvasBackgroundColor: state.canvasBackgroundColor,
+      resizeOrigin: state.resizeOrigin,
+      layers: state.layers.map((layer, index) => (index === layerIndex ? nextLayer : layer)),
+      activeLayerId: state.activeLayerId,
+    },
+    selection,
+  );
 }
 
 const initialSnapshot = createInitialSnapshot();
 
 export { blankCellColor };
-export type { CanvasStore, DrawingCell, DrawingLayer, ImageLayer, Layer, PlacedSymbol };
+export type {
+  CanvasStore,
+  CellSelection,
+  DrawingCell,
+  DrawingLayer,
+  ImageLayer,
+  Layer,
+  PlacedSymbol,
+};
 
 export const useCanvasStore = create<CanvasStore>((set) => ({
   ...initialSnapshot,
   historyPast: [],
   historyFuture: [],
+  selection: null,
   createCanvas: (rows, stiches) =>
     set((state) => {
-      const drawingLayer = createDrawingLayer(stiches, rows, '드로잉 레이어 1');
+      const drawingLayer = createDrawingLayer(stiches, rows, '레이어 1');
 
-      return commitSnapshot(state, {
-        title: state.title,
-        rows,
-        stiches,
-        hasCanvas: true,
-        resizeOrigin: 'center',
-        layers: [drawingLayer],
-        activeLayerId: drawingLayer.id,
-      });
+      return commitSnapshot(
+        state,
+        {
+          title: state.title,
+          rows,
+          stiches,
+          hasCanvas: true,
+          canvasBackgroundColor: state.canvasBackgroundColor,
+          resizeOrigin: 'center',
+          layers: [drawingLayer],
+          activeLayerId: drawingLayer.id,
+        },
+        null,
+      );
     }),
   resizeCanvas: (rows, stiches, origin) =>
     set((state) => {
@@ -305,54 +410,62 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
       const horizontalShift = columnOffsets.addBefore - columnOffsets.removeBefore;
       const verticalShift = rowOffsets.addBefore - rowOffsets.removeBefore;
 
-      return commitSnapshot(state, {
-        title: state.title,
-        rows,
-        stiches,
-        hasCanvas: true,
-        resizeOrigin: origin,
-        activeLayerId: state.activeLayerId,
-        layers: state.layers.map((layer) => {
-          if (layer.type === 'image') {
+      return commitSnapshot(
+        state,
+        {
+          title: state.title,
+          rows,
+          stiches,
+          hasCanvas: true,
+          canvasBackgroundColor: state.canvasBackgroundColor,
+          resizeOrigin: origin,
+          activeLayerId: state.activeLayerId,
+          layers: state.layers.map((layer) => {
+            if (layer.type === 'image') {
+              return {
+                ...layer,
+                offsetX: layer.offsetX + horizontalShift * baseCellSize,
+                offsetY: layer.offsetY + verticalShift * baseCellSize,
+              };
+            }
+
+            const resizedCells = Array.from({ length: rows * stiches }, () => createBlankCell());
+
+            for (let sourceRow = 0; sourceRow < state.rows; sourceRow += 1) {
+              for (let sourceColumn = 0; sourceColumn < state.stiches; sourceColumn += 1) {
+                const nextRow = sourceRow + verticalShift;
+                const nextColumn = sourceColumn + horizontalShift;
+
+                if (nextRow < 0 || nextRow >= rows || nextColumn < 0 || nextColumn >= stiches) {
+                  continue;
+                }
+
+                resizedCells[getCellIndex(nextRow, nextColumn, stiches)] =
+                  layer.cells[getCellIndex(sourceRow, sourceColumn, state.stiches)] ?? createBlankCell();
+              }
+            }
+
             return {
               ...layer,
-              offsetX: layer.offsetX + horizontalShift * baseCellSize,
-              offsetY: layer.offsetY + verticalShift * baseCellSize,
+              cells: resizedCells,
+              placedSymbols: layer.placedSymbols
+                .map((symbol) => ({
+                  ...symbol,
+                  row: symbol.row + verticalShift,
+                  column: symbol.column + horizontalShift,
+                }))
+                .filter((symbol) => symbolHasVisibleArea(symbol, rows, stiches)),
             };
-          }
-
-          const resizedCells = Array.from({ length: rows * stiches }, () => createBlankCell());
-
-          for (let sourceRow = 0; sourceRow < state.rows; sourceRow += 1) {
-            for (let sourceColumn = 0; sourceColumn < state.stiches; sourceColumn += 1) {
-              const nextRow = sourceRow + verticalShift;
-              const nextColumn = sourceColumn + horizontalShift;
-
-              if (nextRow < 0 || nextRow >= rows || nextColumn < 0 || nextColumn >= stiches) {
-                continue;
-              }
-
-              resizedCells[getCellIndex(nextRow, nextColumn, stiches)] =
-                layer.cells[getCellIndex(sourceRow, sourceColumn, state.stiches)] ?? createBlankCell();
-            }
-          }
-
-          return {
-            ...layer,
-            cells: resizedCells,
-            placedSymbols: layer.placedSymbols
-              .map((symbol) => ({
-                ...symbol,
-                row: symbol.row + verticalShift,
-                column: symbol.column + horizontalShift,
-              }))
-              .filter((symbol) => symbolHasVisibleArea(symbol, rows, stiches)),
-          };
-        }),
-      });
+          }),
+        },
+        null,
+      );
     }),
   setResizeOrigin: (origin) => set({ resizeOrigin: origin }),
   setTitle: (title) => set({ title }),
+  setCanvasBackgroundColor: (canvasBackgroundColor) => set({ canvasBackgroundColor }),
+  setSelection: (selection) => set({ selection: selection ? normalizeSelection(selection) : null }),
+  clearSelection: () => set({ selection: null }),
   paintSymbolCell: (row, column, symbol) =>
     set((state) =>
       updateDrawingLayer(state, (layer) => ({
@@ -472,23 +585,322 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         };
       }),
     ),
-  addDrawingLayer: () =>
+  moveActiveDrawingLayer: (rowDelta, columnDelta) =>
+    set((state) =>
+      updateDrawingLayer(state, (layer) =>
+        moveDrawingLayerContent(layer, state.rows, state.stiches, rowDelta, columnDelta),
+      ),
+    ),
+  moveActiveImageLayer: (offsetXDelta, offsetYDelta) =>
     set((state) => {
-      const drawingLayer = createDrawingLayer(
-        state.stiches,
-        state.rows,
-        `드로잉 레이어 ${state.layers.filter((layer) => layer.type === 'drawing').length + 1}`,
-      );
+      if (!state.activeLayerId || (offsetXDelta === 0 && offsetYDelta === 0)) {
+        return state;
+      }
+
+      const activeLayer = state.layers.find((layer) => layer.id === state.activeLayerId);
+
+      if (!activeLayer || activeLayer.type !== 'image') {
+        return state;
+      }
 
       return commitSnapshot(state, {
         title: state.title,
         rows: state.rows,
         stiches: state.stiches,
         hasCanvas: state.hasCanvas,
+        canvasBackgroundColor: state.canvasBackgroundColor,
         resizeOrigin: state.resizeOrigin,
-        activeLayerId: drawingLayer.id,
-        layers: [...state.layers, drawingLayer],
+        activeLayerId: state.activeLayerId,
+        layers: state.layers.map((layer) =>
+          layer.id === activeLayer.id && layer.type === 'image'
+            ? {
+                ...layer,
+                offsetX: layer.offsetX + offsetXDelta,
+                offsetY: layer.offsetY + offsetYDelta,
+              }
+            : layer,
+        ),
       });
+    }),
+  flipActiveLayerHorizontally: () =>
+    set((state) => {
+      const activeLayer = state.layers.find((layer) => layer.id === state.activeLayerId);
+
+      if (!activeLayer) {
+        return state;
+      }
+
+      if (activeLayer.type === 'image') {
+        return commitSnapshot(state, {
+          title: state.title,
+          rows: state.rows,
+          stiches: state.stiches,
+          hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
+          resizeOrigin: state.resizeOrigin,
+          activeLayerId: state.activeLayerId,
+          layers: state.layers.map((layer) =>
+            layer.id === activeLayer.id && layer.type === 'image'
+              ? { ...layer, isFlippedHorizontally: !layer.isFlippedHorizontally }
+              : layer,
+          ),
+        });
+      }
+
+      return updateDrawingLayer(state, (layer) => {
+        const nextCells = Array.from({ length: state.rows * state.stiches }, () => createBlankCell());
+
+        for (let row = 0; row < state.rows; row += 1) {
+          for (let column = 0; column < state.stiches; column += 1) {
+            nextCells[getCellIndex(row, state.stiches - column - 1, state.stiches)] =
+              cloneCell(layer.cells[getCellIndex(row, column, state.stiches)] ?? createBlankCell());
+          }
+        }
+
+        return {
+          ...layer,
+          cells: nextCells,
+          placedSymbols: layer.placedSymbols.map((symbol) => ({
+            ...symbol,
+            column: state.stiches - symbol.column - symbol.spanColumns,
+          })),
+        };
+      });
+    }),
+  flipActiveLayerVertically: () =>
+    set((state) => {
+      const activeLayer = state.layers.find((layer) => layer.id === state.activeLayerId);
+
+      if (!activeLayer) {
+        return state;
+      }
+
+      if (activeLayer.type === 'image') {
+        return commitSnapshot(state, {
+          title: state.title,
+          rows: state.rows,
+          stiches: state.stiches,
+          hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
+          resizeOrigin: state.resizeOrigin,
+          activeLayerId: state.activeLayerId,
+          layers: state.layers.map((layer) =>
+            layer.id === activeLayer.id && layer.type === 'image'
+              ? { ...layer, isFlippedVertically: !layer.isFlippedVertically }
+              : layer,
+          ),
+        });
+      }
+
+      return updateDrawingLayer(state, (layer) => {
+        const nextCells = Array.from({ length: state.rows * state.stiches }, () => createBlankCell());
+
+        for (let row = 0; row < state.rows; row += 1) {
+          for (let column = 0; column < state.stiches; column += 1) {
+            nextCells[getCellIndex(state.rows - row - 1, column, state.stiches)] =
+              cloneCell(layer.cells[getCellIndex(row, column, state.stiches)] ?? createBlankCell());
+          }
+        }
+
+        return {
+          ...layer,
+          cells: nextCells,
+          placedSymbols: layer.placedSymbols.map((symbol) => ({
+            ...symbol,
+            row: state.rows - symbol.row - symbol.spanRows,
+          })),
+        };
+      });
+    }),
+  flipSelectionHorizontally: () =>
+    set((state) => {
+      if (!state.selection) {
+        return state;
+      }
+
+      const selection = normalizeSelection(state.selection);
+
+      return updateDrawingLayer(
+        state,
+        (layer) => {
+          const nextCells = layer.cells.map(cloneCell);
+
+          for (let row = selection.top; row <= selection.bottom; row += 1) {
+            for (let column = selection.left; column <= selection.right; column += 1) {
+              const mirroredColumn = selection.left + (selection.right - column);
+
+              nextCells[getCellIndex(row, mirroredColumn, state.stiches)] = cloneCell(
+                layer.cells[getCellIndex(row, column, state.stiches)] ?? createBlankCell(),
+              );
+            }
+          }
+
+          const selectedSymbols = layer.placedSymbols.filter((symbol) => symbolIsInsideSelection(symbol, selection));
+          const mirroredSymbols = selectedSymbols.map((symbol) => ({
+            ...symbol,
+            column: selection.left + (selection.right - (symbol.column + symbol.spanColumns - 1)),
+          }));
+
+          return {
+            ...layer,
+            cells: nextCells,
+            placedSymbols: [
+              ...layer.placedSymbols.filter(
+                (symbol) =>
+                  !selectedSymbols.includes(symbol) &&
+                  !mirroredSymbols.some((mirroredSymbol) =>
+                    symbolsOverlap(
+                      mirroredSymbol.row,
+                      mirroredSymbol.column,
+                      mirroredSymbol.spanRows,
+                      mirroredSymbol.spanColumns,
+                      symbol,
+                    ),
+                  ),
+              ),
+              ...mirroredSymbols,
+            ],
+          };
+        },
+        selection,
+      );
+    }),
+  flipSelectionVertically: () =>
+    set((state) => {
+      if (!state.selection) {
+        return state;
+      }
+
+      const selection = normalizeSelection(state.selection);
+
+      return updateDrawingLayer(
+        state,
+        (layer) => {
+          const nextCells = layer.cells.map(cloneCell);
+
+          for (let row = selection.top; row <= selection.bottom; row += 1) {
+            for (let column = selection.left; column <= selection.right; column += 1) {
+              const mirroredRow = selection.top + (selection.bottom - row);
+
+              nextCells[getCellIndex(mirroredRow, column, state.stiches)] = cloneCell(
+                layer.cells[getCellIndex(row, column, state.stiches)] ?? createBlankCell(),
+              );
+            }
+          }
+
+          const selectedSymbols = layer.placedSymbols.filter((symbol) => symbolIsInsideSelection(symbol, selection));
+          const mirroredSymbols = selectedSymbols.map((symbol) => ({
+            ...symbol,
+            row: selection.top + (selection.bottom - (symbol.row + symbol.spanRows - 1)),
+          }));
+
+          return {
+            ...layer,
+            cells: nextCells,
+            placedSymbols: [
+              ...layer.placedSymbols.filter(
+                (symbol) =>
+                  !selectedSymbols.includes(symbol) &&
+                  !mirroredSymbols.some((mirroredSymbol) =>
+                    symbolsOverlap(
+                      mirroredSymbol.row,
+                      mirroredSymbol.column,
+                      mirroredSymbol.spanRows,
+                      mirroredSymbol.spanColumns,
+                      symbol,
+                    ),
+                  ),
+              ),
+              ...mirroredSymbols,
+            ],
+          };
+        },
+        selection,
+      );
+    }),
+  duplicateSelection: () =>
+    set((state) => {
+      if (!state.selection) {
+        return state;
+      }
+
+      const selection = normalizeSelection(state.selection);
+      const activeLayerIndex = state.activeLayerId ? getDrawingLayerIndex(state.layers, state.activeLayerId) : -1;
+
+      if (activeLayerIndex < 0) {
+        return state;
+      }
+
+      const activeLayer = state.layers[activeLayerIndex] as DrawingLayer;
+      const duplicatedLayer: DrawingLayer = {
+        ...createDrawingLayer(
+          state.stiches,
+          state.rows,
+          `${activeLayer.name} 선택 복사본`,
+        ),
+        cells: Array.from({ length: state.rows * state.stiches }, (_, index) => {
+          const row = Math.floor(index / state.stiches);
+          const column = index % state.stiches;
+
+          if (
+            row < selection.top ||
+            row > selection.bottom ||
+            column < selection.left ||
+            column > selection.right
+          ) {
+            return createBlankCell();
+          }
+
+          return cloneCell(activeLayer.cells[index] ?? createBlankCell());
+        }),
+        placedSymbols: activeLayer.placedSymbols
+          .filter((symbol) => symbolIsInsideSelection(symbol, selection))
+          .map((symbol) => ({
+            ...clonePlacedSymbol(symbol),
+            id: createPlacedSymbolId(),
+          })),
+      };
+
+      const nextLayers = [...state.layers];
+      nextLayers.splice(activeLayerIndex + 1, 0, duplicatedLayer);
+
+      return commitSnapshot(
+        state,
+        {
+          title: state.title,
+          rows: state.rows,
+          stiches: state.stiches,
+          hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
+          resizeOrigin: state.resizeOrigin,
+          layers: nextLayers,
+          activeLayerId: duplicatedLayer.id,
+        },
+        selection,
+      );
+    }),
+  addDrawingLayer: () =>
+    set((state) => {
+      const drawingLayer = createDrawingLayer(
+        state.stiches,
+        state.rows,
+        `레이어 ${state.layers.filter((layer) => layer.type === 'drawing').length + 1}`,
+      );
+
+      return commitSnapshot(
+        state,
+        {
+          title: state.title,
+          rows: state.rows,
+          stiches: state.stiches,
+          hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
+          resizeOrigin: state.resizeOrigin,
+          activeLayerId: drawingLayer.id,
+          layers: [...state.layers, drawingLayer],
+        },
+        null,
+      );
     }),
   addImageLayer: ({ name, src, thumbnail, imageWidth, imageHeight }) =>
     set((state) => {
@@ -509,19 +921,26 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         height: imageFrame.height,
         offsetX: imageFrame.offsetX,
         offsetY: imageFrame.offsetY,
+        isFlippedHorizontally: false,
+        isFlippedVertically: false,
       };
 
-      return commitSnapshot(state, {
-        title: state.title,
-        rows: state.rows,
-        stiches: state.stiches,
-        hasCanvas: state.hasCanvas,
-        resizeOrigin: state.resizeOrigin,
-        activeLayerId: imageLayer.id,
-        layers: [...state.layers, imageLayer],
-      });
+      return commitSnapshot(
+        state,
+        {
+          title: state.title,
+          rows: state.rows,
+          stiches: state.stiches,
+          hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
+          resizeOrigin: state.resizeOrigin,
+          activeLayerId: imageLayer.id,
+          layers: [...state.layers, imageLayer],
+        },
+        null,
+      );
     }),
-  setActiveLayer: (layerId) => set({ activeLayerId: layerId }),
+  setActiveLayer: (layerId) => set({ activeLayerId: layerId, selection: null }),
   moveLayer: (sourceId, targetId) =>
     set((state) => {
       if (sourceId === targetId) {
@@ -535,18 +954,19 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         return state;
       }
 
-      const layers = [...state.layers];
-      const [sourceLayer] = layers.splice(sourceIndex, 1);
-      layers.splice(targetIndex, 0, sourceLayer);
+      const nextLayers = [...state.layers];
+      const [sourceLayer] = nextLayers.splice(sourceIndex, 1);
+      nextLayers.splice(targetIndex, 0, sourceLayer);
 
       return commitSnapshot(state, {
         title: state.title,
         rows: state.rows,
         stiches: state.stiches,
         hasCanvas: state.hasCanvas,
+        canvasBackgroundColor: state.canvasBackgroundColor,
         resizeOrigin: state.resizeOrigin,
         activeLayerId: state.activeLayerId,
-        layers,
+        layers: nextLayers,
       });
     }),
   toggleLayerVisibility: (layerId) =>
@@ -556,6 +976,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         rows: state.rows,
         stiches: state.stiches,
         hasCanvas: state.hasCanvas,
+        canvasBackgroundColor: state.canvasBackgroundColor,
         resizeOrigin: state.resizeOrigin,
         activeLayerId: state.activeLayerId,
         layers: state.layers.map((layer) =>
@@ -570,6 +991,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         rows: state.rows,
         stiches: state.stiches,
         hasCanvas: state.hasCanvas,
+        canvasBackgroundColor: state.canvasBackgroundColor,
         resizeOrigin: state.resizeOrigin,
         activeLayerId: state.activeLayerId,
         layers: state.layers.map((layer) =>
@@ -584,6 +1006,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         rows: state.rows,
         stiches: state.stiches,
         hasCanvas: state.hasCanvas,
+        canvasBackgroundColor: state.canvasBackgroundColor,
         resizeOrigin: state.resizeOrigin,
         activeLayerId: state.activeLayerId,
         layers: state.layers.map((layer) => (layer.id === layerId ? { ...layer, name } : layer)),
@@ -596,6 +1019,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         rows: state.rows,
         stiches: state.stiches,
         hasCanvas: state.hasCanvas,
+        canvasBackgroundColor: state.canvasBackgroundColor,
         resizeOrigin: state.resizeOrigin,
         activeLayerId: state.activeLayerId,
         layers: state.layers.map((layer) =>
@@ -611,17 +1035,22 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
     ),
   deleteLayer: (layerId) =>
     set((state) => {
-      const layers = state.layers.filter((layer) => layer.id !== layerId);
+      const nextLayers = state.layers.filter((layer) => layer.id !== layerId);
 
-      return commitSnapshot(state, {
-        title: state.title,
-        rows: state.rows,
-        stiches: state.stiches,
-        hasCanvas: state.hasCanvas,
-        resizeOrigin: state.resizeOrigin,
-        activeLayerId: state.activeLayerId === layerId ? layers[0]?.id ?? null : state.activeLayerId,
-        layers,
-      });
+      return commitSnapshot(
+        state,
+        {
+          title: state.title,
+          rows: state.rows,
+          stiches: state.stiches,
+          hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
+          resizeOrigin: state.resizeOrigin,
+          activeLayerId: state.activeLayerId === layerId ? nextLayers[0]?.id ?? null : state.activeLayerId,
+          layers: nextLayers,
+        },
+        null,
+      );
     }),
   duplicateLayer: (layerId) =>
     set((state) => {
@@ -646,19 +1075,24 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
               cells: sourceLayer.cells.map(cloneCell),
               placedSymbols: sourceLayer.placedSymbols.map(clonePlacedSymbol),
             };
-      const layers = [...state.layers];
+      const nextLayers = [...state.layers];
 
-      layers.splice(sourceIndex + 1, 0, duplicatedLayer);
+      nextLayers.splice(sourceIndex + 1, 0, duplicatedLayer);
 
-      return commitSnapshot(state, {
-        title: state.title,
-        rows: state.rows,
-        stiches: state.stiches,
-        hasCanvas: state.hasCanvas,
-        resizeOrigin: state.resizeOrigin,
-        activeLayerId: duplicatedLayer.id,
-        layers,
-      });
+      return commitSnapshot(
+        state,
+        {
+          title: state.title,
+          rows: state.rows,
+          stiches: state.stiches,
+          hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
+          resizeOrigin: state.resizeOrigin,
+          activeLayerId: duplicatedLayer.id,
+          layers: nextLayers,
+        },
+        null,
+      );
     }),
   mergeLayerDown: (layerId) =>
     set((state) => {
@@ -705,25 +1139,30 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         ],
       };
 
-      return commitSnapshot(state, {
-        title: state.title,
-        rows: state.rows,
-        stiches: state.stiches,
-        hasCanvas: state.hasCanvas,
-        resizeOrigin: state.resizeOrigin,
-        activeLayerId: mergedLayer.id,
-        layers: state.layers.flatMap((layer, index) => {
-          if (index === sourceIndex) {
-            return [];
-          }
+      return commitSnapshot(
+        state,
+        {
+          title: state.title,
+          rows: state.rows,
+          stiches: state.stiches,
+          hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
+          resizeOrigin: state.resizeOrigin,
+          activeLayerId: mergedLayer.id,
+          layers: state.layers.flatMap((layer, index) => {
+            if (index === sourceIndex) {
+              return [];
+            }
 
-          if (index === sourceIndex + 1) {
-            return [mergedLayer];
-          }
+            if (index === sourceIndex + 1) {
+              return [mergedLayer];
+            }
 
-          return [layer];
-        }),
-      });
+            return [layer];
+          }),
+        },
+        null,
+      );
     }),
   fitImageLayerToCanvas: (layerId) =>
     set((state) =>
@@ -732,6 +1171,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         rows: state.rows,
         stiches: state.stiches,
         hasCanvas: state.hasCanvas,
+        canvasBackgroundColor: state.canvasBackgroundColor,
         resizeOrigin: state.resizeOrigin,
         activeLayerId: state.activeLayerId,
         layers: state.layers.map((layer) => {
@@ -763,6 +1203,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         rows: state.rows,
         stiches: state.stiches,
         hasCanvas: state.hasCanvas,
+        canvasBackgroundColor: state.canvasBackgroundColor,
         resizeOrigin: state.resizeOrigin,
         activeLayerId: state.activeLayerId,
         layers: state.layers.map((layer) =>
@@ -790,6 +1231,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         ...snapshotFromState(previous),
         historyPast: state.historyPast.slice(0, -1),
         historyFuture: [snapshotFromState(state), ...state.historyFuture],
+        selection: null,
       };
     }),
   redo: () =>
@@ -804,6 +1246,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         ...snapshotFromState(next),
         historyPast: [...state.historyPast, snapshotFromState(state)],
         historyFuture: state.historyFuture.slice(1),
+        selection: null,
       };
     }),
   reset: () => {
@@ -813,6 +1256,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
       ...nextSnapshot,
       historyPast: [],
       historyFuture: [],
+      selection: null,
     });
   },
 }));

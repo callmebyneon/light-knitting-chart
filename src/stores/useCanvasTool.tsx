@@ -18,8 +18,11 @@ export type CanvasPanelMode =
 export type CanvasToolAction =
   | 'activate'
   | 'save'
+  | 'new-canvas'
   | 'undo'
   | 'redo'
+  | 'flip-vertical'
+  | 'flip-horizontal'
   | 'zoom-in'
   | 'zoom-out';
 
@@ -59,6 +62,14 @@ export const toolbarGroups: Array<{
         action: 'activate',
       },
       {
+        id: 'new-canvas',
+        description: '현재 작업을 초기화하고 새 캔버스를 만듭니다.',
+        label: '새 캔버스',
+        cursor: 'default',
+        panelMode: 'none',
+        action: 'new-canvas',
+      },
+      {
         id: 'save-image',
         description: '현재 차트를 PNG 이미지로 저장합니다.',
         shortcut: { key: 's', label: 'Ctrl+S', ctrlKey: true },
@@ -86,40 +97,59 @@ export const toolbarGroups: Array<{
         description: '셀 배경색을 칠합니다.',
         shortcut: { key: 'g', label: 'G' },
         label: '배경',
-        cursor: 'cell',
+        cursor: 'crosshair',
         panelMode: 'background-brush',
         action: 'activate',
       },
       {
         id: 'eraser',
-        description: '셀에 그려진 기호나 배경을 지웁니다.',
+        description: '그려진 기호와 배경색을 지웁니다.',
         shortcut: { key: 'e', label: 'E' },
         label: '지우개',
         cursor: 'not-allowed',
         panelMode: 'eraser',
         action: 'activate',
       },
-      // {
-      //   id: 'selection',
-      //   label: '선택',
-      //   cursor: 'crosshair',
-      //   panelMode: 'selection',
-      //   action: 'activate',
-      // },
+      {
+        id: 'selection',
+        description: '현재 레이어에서 기호와 배경 영역을 선택합니다.',
+        label: '선택',
+        cursor: 'crosshair',
+        panelMode: 'selection',
+        action: 'activate',
+      },
       // {
       //   id: 'fill',
+      //   description: '선택한 영역 또는 캔버스 전체를 채웁니다.',
       //   label: '채우기',
-      //   cursor: 'copy',
+      //   cursor: 'cell',
       //   panelMode: 'fill',
       //   action: 'activate',
       // },
-      // {
-      //   id: 'move',
-      //   label: '이동',
-      //   cursor: 'grab',
-      //   panelMode: 'selection',
-      //   action: 'activate',
-      // },
+      {
+        id: 'move',
+        description: '현재 레이어 캔버스를 이동합니다.',
+        label: '이동',
+        cursor: 'move',
+        panelMode: 'selection',
+        action: 'activate',
+      },
+      {
+        id: 'flip-horizontal',
+        description: '선택한 영역 또는 캔버스 전체를 세로로 뒤집습니다.',
+        label: '좌우반전',
+        cursor: 'default',
+        panelMode: 'selection',
+        action: 'flip-horizontal',
+      },
+      {
+        id: 'flip-vertical',
+        description: '선택한 영역 또는 캔버스 전체를 가로로 뒤집습니다.',
+        label: '상하반전',
+        cursor: 'default',
+        panelMode: 'selection',
+        action: 'flip-vertical',
+      }
     ],
   },
   {
@@ -129,7 +159,7 @@ export const toolbarGroups: Array<{
         id: 'undo',
         description: '마지막 작업을 되돌립니다.',
         shortcut: { key: 'z', label: 'Ctrl+Z', ctrlKey: true },
-        label: '뒤로',
+        label: '실행취소',
         cursor: 'default',
         panelMode: 'none',
         action: 'undo',
@@ -138,7 +168,7 @@ export const toolbarGroups: Array<{
         id: 'redo',
         description: '되돌린 작업을 다시 실행합니다.',
         shortcut: { key: 'z', label: 'Ctrl+Shift+Z', ctrlKey: true, shiftKey: true },
-        label: '앞으로',
+        label: '다시실행',
         cursor: 'default',
         panelMode: 'none',
         action: 'redo',
@@ -171,6 +201,11 @@ type CanvasToolStore = {
   cursor: string;
   zoom: number;
   saveRequestNonce: number;
+  isSaveModalOpen: boolean;
+  isNewCanvasModalOpen: boolean;
+  saveIncludeGrid: boolean;
+  saveIncludeAxisLabels: boolean;
+  isGridVisible: boolean;
   symbolInputMode: 'svg' | 'alphabet';
   customSymbols: CanvasSymbolOption[];
   alphabetSymbolDraft: string;
@@ -179,12 +214,21 @@ type CanvasToolStore = {
   selectedSymbol: string;
   eraserMode: 'symbol' | 'background' | 'area' | 'all';
   fillMode: 'symbol' | 'background';
-  selectionMode: 'rectangle' | 'freeform';
   isPortraitViewport: boolean;
   isLeftPanelOpen: boolean;
   isRightPanelOpen: boolean;
   activateTool: (definition: CanvasToolDefinition) => void;
   requestSave: () => void;
+  openNewCanvasModal: () => void;
+  closeNewCanvasModal: () => void;
+  confirmNewCanvasReset: () => void;
+  closeSaveModal: () => void;
+  confirmSave: () => void;
+  setSaveIncludeGrid: (includeGrid: boolean) => void;
+  setSaveIncludeAxisLabels: (includeAxisLabels: boolean) => void;
+  toggleGridVisibility: () => void;
+  activatePanMode: () => void;
+  resetZoom: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
   setZoom: (zoom: number) => void;
@@ -197,7 +241,6 @@ type CanvasToolStore = {
   setSelectedSymbol: (symbol: string) => void;
   setEraserMode: (mode: 'symbol' | 'background' | 'area' | 'all') => void;
   setFillMode: (mode: 'symbol' | 'background') => void;
-  setSelectionMode: (mode: 'rectangle' | 'freeform') => void;
   setPortraitViewport: (isPortraitViewport: boolean) => void;
   toggleLeftPanel: () => void;
   toggleRightPanel: () => void;
@@ -210,6 +253,11 @@ export const useCanvasTool = create<CanvasToolStore>((set) => ({
   cursor: 'crosshair',
   zoom: 1,
   saveRequestNonce: 0,
+  isSaveModalOpen: false,
+  isNewCanvasModalOpen: false,
+  saveIncludeGrid: true,
+  saveIncludeAxisLabels: true,
+  isGridVisible: true,
   symbolInputMode: 'svg',
   customSymbols: [],
   alphabetSymbolDraft: '',
@@ -218,7 +266,6 @@ export const useCanvasTool = create<CanvasToolStore>((set) => ({
   selectedSymbol: defaultCanvasSymbolOptions[0].id,
   eraserMode: 'all',
   fillMode: 'background',
-  selectionMode: 'rectangle',
   isPortraitViewport: false,
   isLeftPanelOpen: true,
   isRightPanelOpen: true,
@@ -228,10 +275,29 @@ export const useCanvasTool = create<CanvasToolStore>((set) => ({
       panelMode: definition.panelMode,
       cursor: definition.cursor,
     }),
-  requestSave: () => set((state) => ({ saveRequestNonce: state.saveRequestNonce + 1 })),
+  requestSave: () => set({ isSaveModalOpen: true }),
+  openNewCanvasModal: () => set({ isNewCanvasModalOpen: true }),
+  closeNewCanvasModal: () => set({ isNewCanvasModalOpen: false }),
+  confirmNewCanvasReset: () => set({ isNewCanvasModalOpen: false }),
+  closeSaveModal: () => set({ isSaveModalOpen: false }),
+  confirmSave: () =>
+    set((state) => ({
+      isSaveModalOpen: false,
+      saveRequestNonce: state.saveRequestNonce + 1,
+    })),
+  setSaveIncludeGrid: (saveIncludeGrid) => set({ saveIncludeGrid }),
+  setSaveIncludeAxisLabels: (saveIncludeAxisLabels) => set({ saveIncludeAxisLabels }),
+  toggleGridVisibility: () => set((state) => ({ isGridVisible: !state.isGridVisible })),
+  activatePanMode: () =>
+    set({
+      activeToolId: 'pan',
+      panelMode: 'none',
+      cursor: 'grab',
+    }),
+  resetZoom: () => set({ zoom: 1 }),
   zoomIn: () => set((state) => ({ zoom: Math.min(6, Number((state.zoom + 0.2).toFixed(2))) })),
   zoomOut: () => set((state) => ({ zoom: Math.max(0.4, Number((state.zoom - 0.2).toFixed(2))) })),
-  setZoom: (zoom) => set({ zoom }),
+  setZoom: (zoom) => set({ zoom: Math.min(6, Math.max(0.4, Number(zoom.toFixed(2)))) }),
   setSymbolInputMode: (symbolInputMode) => set({ symbolInputMode }),
   setAlphabetSymbolDraft: (alphabetSymbolDraft) =>
     set({ alphabetSymbolDraft: alphabetSymbolDraft.replace(/[^a-z]/gi, '').slice(0, 3) }),
@@ -248,7 +314,6 @@ export const useCanvasTool = create<CanvasToolStore>((set) => ({
         id,
         label: value,
         kind: 'alphabet',
-        text: value,
         spanColumns: 1,
         spanRows: 1,
         draw: createAlphabetSymbolRenderer(),
@@ -274,7 +339,6 @@ export const useCanvasTool = create<CanvasToolStore>((set) => ({
   setSelectedSymbol: (selectedSymbol) => set({ selectedSymbol }),
   setEraserMode: (eraserMode) => set({ eraserMode }),
   setFillMode: (fillMode) => set({ fillMode }),
-  setSelectionMode: (selectionMode) => set({ selectionMode }),
   setPortraitViewport: (isPortraitViewport) =>
     set((state) => ({
       isPortraitViewport,
