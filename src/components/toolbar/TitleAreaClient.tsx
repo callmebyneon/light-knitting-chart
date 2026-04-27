@@ -48,7 +48,7 @@ export default function TitleAreaClient() {
           에서 확인할 수 있는 기호 이미지의 일부를 참고해 구성했습니다.
         </p>
         <p className='break-keep mt-1'>이 앱은 간단하게 태블릿 환경에서 도안을 그리기 위해 만들어졌기 때문에, PC 환경에서 크고 자세한 대바늘 기호 도안은 위 엑셀 파일을 이용하여 만드는 것을 추천드립니다.</p>
-        <p className='text-end text-slate-300'>v0.1.0</p>
+        <p className='text-end text-slate-300'>v0.1.1</p>
       </Modal>
     </header>
   );
