@@ -248,7 +248,6 @@ export const useCanvasTool = create<CanvasToolStore>((set) => ({
         id,
         label: value,
         kind: 'alphabet',
-        text: value,
         spanColumns: 1,
         spanRows: 1,
         draw: createAlphabetSymbolRenderer(),

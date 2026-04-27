@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, SVGProps } from 'react';
 
 import type { PlacedSymbol } from '@/types/canvas';
 
@@ -75,14 +75,14 @@ export function renderSymbolPreview(
         style={{ color, width, height }}
         viewBox={`0 0 ${option.spanColumns * symbolPathCellSize} ${option.spanRows * symbolPathCellSize}`}
       >
-        <path d={option.pathData} fill="currentColor" fillRule='evenodd' />
+        <path d={option.pathData} fill="currentColor" fillRule={option.fillRule as SVGProps<SVGPathElement>["fillRule"] ?? "evenodd"} />
       </svg>
     );
   }
 
   return (
     <span className="text-xs font-semibold" style={{ color }}>
-      {option.text}
+      {option.label}
     </span>
   );
 }

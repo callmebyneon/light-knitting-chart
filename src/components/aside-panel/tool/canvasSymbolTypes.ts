@@ -2,10 +2,10 @@ export type KnitIconCore = {
   id: string;
   label: string;
   kind: 'svg' | 'alphabet';
-  text: string;
   spanColumns: number;
   spanRows: number;
   pathData?: string;
+  fillRule?: string;
 };
 
 export type CanvasSymbolRenderer = (
