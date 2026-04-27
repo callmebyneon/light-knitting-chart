@@ -174,7 +174,6 @@ export default function LayerStackArea({
                             id: previewSymbol.symbolId,
                             label: previewSymbol.symbolText,
                             kind: /^[A-Z]{1,3}$/.test(previewSymbol.symbolText) ? 'alphabet' : 'svg',
-                            text: previewSymbol.symbolText,
                             spanColumns: previewSymbol.spanColumns,
                             spanRows: previewSymbol.spanRows,
                             draw: () => {},
