@@ -3,17 +3,23 @@
 import Modal from '@/components/ui/widgets/Modal';
 import ToolbarButton from '@/components/toolbar/ToolbarButton';
 import { inputClassName, primaryButtonClassName, toolbarButtonClassName } from '@/components/ui/sharedStyles';
+import { useColorHistory } from '@/stores/useColorHistory';
 import { toolbarGroups, useCanvasTool } from '@/stores/useCanvasTool';
 import { useCanvasStore } from '@/stores/useCanvasStore';
+import { clearCanvasSessionState } from '@/utils/canvasSessionStorage';
 
 export default function ToolbarClient() {
   const {
     activeToolId,
     activateTool,
     requestSave,
+    openNewCanvasModal,
+    closeNewCanvasModal,
+    confirmNewCanvasReset,
     closeSaveModal,
     confirmSave,
     isSaveModalOpen,
+    isNewCanvasModalOpen,
     saveIncludeGrid,
     saveIncludeAxisLabels,
     setSaveIncludeGrid,
@@ -21,8 +27,23 @@ export default function ToolbarClient() {
     zoomIn,
     zoomOut,
   } = useCanvasTool();
-  const { undo, redo } = useCanvasStore();
+  const {
+    undo,
+    redo,
+    reset,
+    selection,
+    activeLayerId,
+    layers,
+    flipSelectionHorizontally,
+    flipSelectionVertically,
+    flipActiveLayerHorizontally,
+    flipActiveLayerVertically,
+  } = useCanvasStore();
+  const clearColorHistory = useColorHistory((state) => state.clear);
   const visibleToolbarGroups = toolbarGroups.filter((group) => group.id !== 'history');
+  const selectionMenuEnabled = Boolean(
+    selection && layers.some((layer) => layer.id === activeLayerId && layer.type === 'drawing'),
+  );
 
   return (
     <>
@@ -39,32 +60,45 @@ export default function ToolbarClient() {
                     : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                 }`}
                 onClick={() => {
-                  if (button.action === 'activate') {
-                    activateTool(button);
-                    return;
+                  switch (button.action) {
+                    case 'activate':
+                      activateTool(button);
+                      return;
+                    case 'new-canvas':
+                      openNewCanvasModal();
+                      return;
+                    case 'save':
+                      requestSave();
+                      return;
+                    case 'undo':
+                      undo();
+                      return;
+                    case 'redo':
+                      redo();
+                      return;
+                    case 'flip-vertical':
+                      if (selectionMenuEnabled) {
+                        flipSelectionVertically();
+                        return;
+                      }
+                      flipActiveLayerVertically();
+                      return;
+                    case 'flip-horizontal':
+                      if (selectionMenuEnabled) {
+                        flipSelectionHorizontally();
+                        return;
+                      }
+                      flipActiveLayerHorizontally();
+                      return;
+                    case 'zoom-in':
+                      zoomIn();
+                      return;
+                    case 'zoom-out':
+                      zoomOut();
+                      return;
+                    default:
+                      return;
                   }
-
-                  if (button.action === 'save') {
-                    requestSave();
-                    return;
-                  }
-
-                  if (button.action === 'undo') {
-                    undo();
-                    return;
-                  }
-
-                  if (button.action === 'redo') {
-                    redo();
-                    return;
-                  }
-
-                  if (button.action === 'zoom-in') {
-                    zoomIn();
-                    return;
-                  }
-
-                  zoomOut();
                 }}
               />
             ))}
@@ -104,6 +138,29 @@ export default function ToolbarClient() {
           <button type="button" className={primaryButtonClassName} onClick={confirmSave}>
             이미지로 저장
           </button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={isNewCanvasModalOpen} title="새 캔버스" onClose={closeNewCanvasModal}>
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-slate-600">모든 작업 내용을 초기화하고 새 캔버스를 만들까요?</p>
+          <div className="flex justify-end gap-2">
+            <button type="button" className={toolbarButtonClassName} onClick={closeNewCanvasModal}>
+              취소
+            </button>
+            <button
+              type="button"
+              className={primaryButtonClassName}
+              onClick={() => {
+                clearCanvasSessionState();
+                clearColorHistory();
+                reset();
+                confirmNewCanvasReset();
+              }}
+            >
+              초기화
+            </button>
+          </div>
         </div>
       </Modal>
     </>

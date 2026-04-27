@@ -90,7 +90,6 @@ export default function CanvasToolWindowPanelClient() {
     alphabetSymbolDraft,
     eraserMode,
     fillMode,
-    selectionMode,
     isPortraitViewport,
     isRightPanelOpen,
     setSymbolColor,
@@ -102,7 +101,6 @@ export default function CanvasToolWindowPanelClient() {
     deleteCustomSymbol,
     setEraserMode,
     setFillMode,
-    setSelectionMode,
     toggleRightPanel,
   } = useCanvasTool();
   const colorHistory = useColorHistory((state) => state.colors);
@@ -498,16 +496,8 @@ export default function CanvasToolWindowPanelClient() {
             {panelMode === 'selection' ? (
               <div className="flex flex-col gap-3">
                 <p className="text-sm font-semibold text-slate-700">선택 / 이동</p>
-                <select
-                  className={inputClassName}
-                  value={selectionMode}
-                  onChange={(event) => setSelectionMode(event.target.value as 'rectangle' | 'freeform')}
-                >
-                  <option value="rectangle">사각형 선택</option>
-                  <option value="freeform">자유 형태 선택</option>
-                </select>
-                <p className="text-xs text-slate-500">
-                  선택 복제와 삭제 이동 동작은 다음 단계에서 확장할 수 있도록 상태 구조를 유지합니다.
+                <p className="text-xs leading-5 text-slate-500">
+                  현재는 사각형 영역만 선택할 수 있습니다. 추가 설정은 아직 제공되지 않습니다.
                 </p>
               </div>
             ) : null}

@@ -48,6 +48,8 @@ export type ImageLayer = {
   height: number;
   offsetX: number;
   offsetY: number;
+  isFlippedHorizontally: boolean;
+  isFlippedVertically: boolean;
 };
 
 export type Layer = DrawingLayer | ImageLayer;
@@ -60,4 +62,11 @@ export type CanvasSnapshot = {
   resizeOrigin: ResizeOrigin;
   layers: Layer[];
   activeLayerId: string | null;
+};
+
+export type CellSelection = {
+  top: number;
+  left: number;
+  bottom: number;
+  right: number;
 };

@@ -133,6 +133,21 @@ hr {
   background-color: var(--scrollbar-thumb-hover);
 }
 
+@keyframes selection-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.selection-outline {
+  border: 1px dashed #0f172a;
+  animation: selection-blink 0.9s steps(2, end) infinite;
+}
+
 @theme inline { 
   --font-heading: var(--font-sans); 
   --font-sans: var(--font-sans); 

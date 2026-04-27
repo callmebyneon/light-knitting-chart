@@ -12,12 +12,14 @@ function normalizeHexColor(color: string) {
 type ColorHistoryStore = {
   colors: string[];
   addColor: (color: string) => void;
+  clear: () => void;
 };
 
 export const useColorHistory = create<ColorHistoryStore>()(
   persist(
     (set) => ({
       colors: [],
+      clear: () => set({ colors: [] }),
       addColor: (color) =>
         set((state) => {
           const normalizedColor = normalizeHexColor(color);

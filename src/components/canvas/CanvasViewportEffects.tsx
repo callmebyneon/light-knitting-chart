@@ -6,8 +6,21 @@ import { useCanvasStore } from '@/stores/useCanvasStore';
 import { toolbarGroups, useCanvasTool } from '@/stores/useCanvasTool';
 
 export default function CanvasViewportEffects() {
-  const { undo, redo } = useCanvasStore();
-  const { activateTool, requestSave, setPortraitViewport, zoomIn, zoomOut } = useCanvasTool();
+  const {
+    undo,
+    redo,
+    selection,
+    activeLayerId,
+    layers,
+    flipSelectionHorizontally,
+    flipSelectionVertically,
+    flipActiveLayerHorizontally,
+    flipActiveLayerVertically,
+  } = useCanvasStore();
+  const { activateTool, openNewCanvasModal, requestSave, setPortraitViewport, zoomIn, zoomOut } = useCanvasTool();
+  const selectionMenuEnabled = Boolean(
+    selection && layers.some((layer) => layer.id === activeLayerId && layer.type === 'drawing'),
+  );
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(orientation: portrait)');
@@ -71,6 +84,11 @@ export default function CanvasViewportEffects() {
         return;
       }
 
+      if (button.action === 'new-canvas') {
+        openNewCanvasModal();
+        return;
+      }
+
       if (button.action === 'undo') {
         undo();
         return;
@@ -78,6 +96,26 @@ export default function CanvasViewportEffects() {
 
       if (button.action === 'redo') {
         redo();
+        return;
+      }
+
+      if (button.action === 'flip-horizontal') {
+        if (selectionMenuEnabled) {
+          flipSelectionHorizontally();
+          return;
+        }
+
+        flipActiveLayerHorizontally();
+        return;
+      }
+
+      if (button.action === 'flip-vertical') {
+        if (selectionMenuEnabled) {
+          flipSelectionVertically();
+          return;
+        }
+
+        flipActiveLayerVertically();
         return;
       }
 
@@ -94,7 +132,20 @@ export default function CanvasViewportEffects() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [activateTool, redo, requestSave, undo, zoomIn, zoomOut]);
+  }, [
+    activateTool,
+    flipActiveLayerHorizontally,
+    flipActiveLayerVertically,
+    flipSelectionHorizontally,
+    flipSelectionVertically,
+    openNewCanvasModal,
+    redo,
+    requestSave,
+    selectionMenuEnabled,
+    undo,
+    zoomIn,
+    zoomOut,
+  ]);
 
   return null;
 }
