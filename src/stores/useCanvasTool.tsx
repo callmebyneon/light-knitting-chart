@@ -99,27 +99,30 @@ export const toolbarGroups: Array<{
         panelMode: 'eraser',
         action: 'activate',
       },
-      // {
-      //   id: 'selection',
-      //   label: '선택',
-      //   cursor: 'crosshair',
-      //   panelMode: 'selection',
-      //   action: 'activate',
-      // },
-      // {
-      //   id: 'fill',
-      //   label: '채우기',
-      //   cursor: 'copy',
-      //   panelMode: 'fill',
-      //   action: 'activate',
-      // },
-      // {
-      //   id: 'move',
-      //   label: '이동',
-      //   cursor: 'grab',
-      //   panelMode: 'selection',
-      //   action: 'activate',
-      // },
+      {
+        id: 'selection',
+        description: '현재 레이어에서 셀에 그려진 기호나 배경색을 선택합니다',
+        label: '선택',
+        cursor: 'crosshair',
+        panelMode: 'selection',
+        action: 'activate',
+      },
+      {
+        id: 'fill',
+        description: '현재 레이어에서 선택된 영역 혹은 캔버스 전체를 채웁니다.',
+        label: '채우기',
+        cursor: 'copy',
+        panelMode: 'fill',
+        action: 'activate',
+      },
+      {
+        id: 'move',
+        description: '현재 레이어에서 선택된 영역 혹은 캔버스 전체를 이동합니다.',
+        label: '이동',
+        cursor: 'grab',
+        panelMode: 'selection',
+        action: 'activate',
+      },
     ],
   },
   {
@@ -129,7 +132,7 @@ export const toolbarGroups: Array<{
         id: 'undo',
         description: '마지막 작업을 되돌립니다.',
         shortcut: { key: 'z', label: 'Ctrl+Z', ctrlKey: true },
-        label: '뒤로',
+        label: '실행취소',
         cursor: 'default',
         panelMode: 'none',
         action: 'undo',
@@ -138,7 +141,7 @@ export const toolbarGroups: Array<{
         id: 'redo',
         description: '되돌린 작업을 다시 실행합니다.',
         shortcut: { key: 'z', label: 'Ctrl+Shift+Z', ctrlKey: true, shiftKey: true },
-        label: '앞으로',
+        label: '다시실행',
         cursor: 'default',
         panelMode: 'none',
         action: 'redo',
@@ -171,6 +174,10 @@ type CanvasToolStore = {
   cursor: string;
   zoom: number;
   saveRequestNonce: number;
+  isSaveModalOpen: boolean;
+  saveIncludeGrid: boolean;
+  saveIncludeAxisLabels: boolean;
+  isGridVisible: boolean;
   symbolInputMode: 'svg' | 'alphabet';
   customSymbols: CanvasSymbolOption[];
   alphabetSymbolDraft: string;
@@ -185,6 +192,13 @@ type CanvasToolStore = {
   isRightPanelOpen: boolean;
   activateTool: (definition: CanvasToolDefinition) => void;
   requestSave: () => void;
+  closeSaveModal: () => void;
+  confirmSave: () => void;
+  setSaveIncludeGrid: (includeGrid: boolean) => void;
+  setSaveIncludeAxisLabels: (includeAxisLabels: boolean) => void;
+  toggleGridVisibility: () => void;
+  activatePanMode: () => void;
+  resetZoom: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
   setZoom: (zoom: number) => void;
@@ -210,6 +224,10 @@ export const useCanvasTool = create<CanvasToolStore>((set) => ({
   cursor: 'crosshair',
   zoom: 1,
   saveRequestNonce: 0,
+  isSaveModalOpen: false,
+  saveIncludeGrid: true,
+  saveIncludeAxisLabels: true,
+  isGridVisible: true,
   symbolInputMode: 'svg',
   customSymbols: [],
   alphabetSymbolDraft: '',
@@ -228,10 +246,26 @@ export const useCanvasTool = create<CanvasToolStore>((set) => ({
       panelMode: definition.panelMode,
       cursor: definition.cursor,
     }),
-  requestSave: () => set((state) => ({ saveRequestNonce: state.saveRequestNonce + 1 })),
+  requestSave: () => set({ isSaveModalOpen: true }),
+  closeSaveModal: () => set({ isSaveModalOpen: false }),
+  confirmSave: () =>
+    set((state) => ({
+      isSaveModalOpen: false,
+      saveRequestNonce: state.saveRequestNonce + 1,
+    })),
+  setSaveIncludeGrid: (saveIncludeGrid) => set({ saveIncludeGrid }),
+  setSaveIncludeAxisLabels: (saveIncludeAxisLabels) => set({ saveIncludeAxisLabels }),
+  toggleGridVisibility: () => set((state) => ({ isGridVisible: !state.isGridVisible })),
+  activatePanMode: () =>
+    set({
+      activeToolId: 'pan',
+      panelMode: 'none',
+      cursor: 'grab',
+    }),
+  resetZoom: () => set({ zoom: 1 }),
   zoomIn: () => set((state) => ({ zoom: Math.min(6, Number((state.zoom + 0.2).toFixed(2))) })),
   zoomOut: () => set((state) => ({ zoom: Math.max(0.4, Number((state.zoom - 0.2).toFixed(2))) })),
-  setZoom: (zoom) => set({ zoom }),
+  setZoom: (zoom) => set({ zoom: Math.min(6, Math.max(0.4, Number(zoom.toFixed(2)))) }),
   setSymbolInputMode: (symbolInputMode) => set({ symbolInputMode }),
   setAlphabetSymbolDraft: (alphabetSymbolDraft) =>
     set({ alphabetSymbolDraft: alphabetSymbolDraft.replace(/[^a-z]/gi, '').slice(0, 3) }),

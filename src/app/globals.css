@@ -109,6 +109,30 @@ hr {
   display: none;
 }
 
+.hover-scrollbar {
+  transition: all 500ms;
+  scrollbar-color: transparent transparent;
+}
+
+.hover-scrollbar::-webkit-scrollbar-thumb {
+  background-color: transparent;
+}
+
+.hover-scrollbar:hover,
+.hover-scrollbar:focus-within {
+  scrollbar-color: var(--scrollbar-thumb-base) transparent;
+}
+
+.hover-scrollbar:hover::-webkit-scrollbar-thumb,
+.hover-scrollbar:focus-within::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-base);
+}
+
+.hover-scrollbar:hover::-webkit-scrollbar-thumb:hover,
+.hover-scrollbar:focus-within::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
 @theme inline { 
   --font-heading: var(--font-sans); 
   --font-sans: var(--font-sans); 

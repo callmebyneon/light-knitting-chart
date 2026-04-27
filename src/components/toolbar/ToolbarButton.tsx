@@ -1,5 +1,4 @@
 import type { CanvasToolDefinition } from '@/stores/useCanvasTool';
-import { ZoomIn, ZoomOut } from 'lucide-react';
 
 type ToolbarButtonProps = {
   button: CanvasToolDefinition;
@@ -14,7 +13,7 @@ export default function ToolbarButton({ button, className, onClick }: ToolbarBut
 
   return (
     <button type="button" className={className} title={tooltip} aria-label={tooltip} onClick={onClick}>
-      {button.label === '+' ? <ZoomIn size={16} /> : button.label === '-' ? <ZoomOut size={16} /> : button.label}
+      {button.label}
     </button>
   );
 }
