@@ -20,7 +20,9 @@ export default function RootLayout({
       lang="ko"
       className={cn("h-full", "antialiased", "font-sans", geist.variable)}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <div className="h-screen w-full overflow-hidden text-sm">{children}</div>
+      </body>
     </html>
   );
 }
