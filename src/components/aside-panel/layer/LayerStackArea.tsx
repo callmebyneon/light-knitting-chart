@@ -5,7 +5,7 @@ import { Eye, EyeOff, GripVertical, ImageIcon, PencilLine } from 'lucide-react';
 
 import { defaultCanvasSymbolOptions, renderSymbolPreview } from '@/components/aside-panel/tool/canvasSymbols';
 import { contextMenuClassName, inputClassName, panelSectionClassName } from '@/components/ui/sharedStyles';
-import { cn } from '@/utils/classnameUtils';
+import { cn } from "@/lib/utils";
 import { ImageLayer, Layer } from '@/stores/useCanvasStore';
 
 const contextMenuInset = {
