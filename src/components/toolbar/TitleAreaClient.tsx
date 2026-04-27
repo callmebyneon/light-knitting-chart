@@ -3,7 +3,7 @@
 import { buttonClassName, inputClassBarebone } from '@/components/ui/sharedStyles';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useState } from 'react';
-import Modal from '../widgets/Modal';
+import Modal from '../ui/widgets/Modal';
 import { Info } from 'lucide-react';
 
 export default function TitleAreaClient() {
