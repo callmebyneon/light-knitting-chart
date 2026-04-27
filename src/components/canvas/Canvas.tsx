@@ -4,6 +4,7 @@ import type { PointerEvent, TouchEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
 import { defaultCanvasSymbolOptions, drawPlacedSymbol } from '@/components/aside-panel/tool/canvasSymbols';
+import { useColorHistory } from '@/stores/useColorHistory';
 import { useCanvasTool } from '@/stores/useCanvasTool';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 import type { Layer } from '@/types/canvas';
@@ -205,6 +206,7 @@ export default function Canvas() {
     eraseCellBackground,
     clearCell,
   } = useCanvasStore();
+  const addColorHistory = useColorHistory((state) => state.addColor);
   const {
     activeToolId,
     cursor,
@@ -465,6 +467,7 @@ export default function Canvas() {
       defaultCanvasSymbolOptions[0];
 
     if (activeToolId === 'background-brush') {
+      addColorHistory(backgroundColor);
       paintBackgroundCell(cell.row, cell.column, backgroundColor);
       return;
     }
@@ -485,11 +488,13 @@ export default function Canvas() {
     }
 
     if (activeToolId === 'fill' && fillMode === 'background') {
+      addColorHistory(backgroundColor);
       paintBackgroundCell(cell.row, cell.column, backgroundColor);
       return;
     }
 
     if (activeToolId === 'symbol-brush' || activeToolId === 'fill') {
+      addColorHistory(symbolColor);
       paintSymbolCell(cell.row, cell.column, {
         symbolId: symbolOption.id,
         symbolText: symbolOption.label,

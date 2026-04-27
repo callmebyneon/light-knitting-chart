@@ -14,6 +14,7 @@ import {
   panelShellClassName,
   contextMenuClassName,
 } from '@/components/ui/sharedStyles';
+import { useColorHistory } from '@/stores/useColorHistory';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useCanvasTool } from '@/stores/useCanvasTool';
 
@@ -25,6 +26,41 @@ type SymbolOptionGroup = {
   spanRows: number;
   symbols: CanvasSymbolOption[];
 };
+
+type ColorHistorySwatchesProps = {
+  colors: string[];
+  onSelect: (color: string) => void;
+};
+
+function ColorHistorySwatches({ colors, onSelect }: ColorHistorySwatchesProps) {
+  if (colors.length === 0) {
+    return (
+      <div className="rounded-md bg-slate-50 px-3 py-3 text-center text-xs text-slate-500">
+        아직 사용한 색상이 없습니다.
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {colors.map((color) => (
+        <button
+          key={color}
+          type="button"
+          className="flex items-center rounded-md border border-slate-200 bg-white px-2 py-2 text-left text-xs text-slate-600 transition hover:border-sky-300 hover:text-sky-700"
+          onClick={() => onSelect(color)}
+          title={color}
+        >
+          <span
+            className="h-5 w-5 shrink-0 rounded border border-slate-200"
+            style={{ backgroundColor: color }}
+          />
+          <span className="truncate font-mono">{color}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function CanvasToolWindowPanelClient() {
   const {
@@ -69,6 +105,7 @@ export default function CanvasToolWindowPanelClient() {
     setSelectionMode,
     toggleRightPanel,
   } = useCanvasTool();
+  const colorHistory = useColorHistory((state) => state.colors);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const customSymbolMenuRef = useRef<HTMLDivElement | null>(null);
@@ -389,10 +426,16 @@ export default function CanvasToolWindowPanelClient() {
                   <div className="flex min-h-4 min-w-4 items-center justify-center overflow-auto rounded-md border border-slate-200 p-1">
                     {renderSymbolPreview(selectedSymbolOption, symbolColor)}
                   </div>
-                  <label className="flex flex-1 flex-col gap-2 text-xs text-slate-600">
-                    기호 색상
-                    <input type="color" value={symbolColor} onChange={(event) => setSymbolColor(event.target.value)} />
-                  </label>
+                  <div className="flex flex-1 flex-col gap-3">
+                    <label className="flex flex-col gap-2 text-xs text-slate-600">
+                      기호 색상
+                      <input type="color" value={symbolColor} onChange={(event) => setSymbolColor(event.target.value)} />
+                    </label>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <p className="text-[11px] font-semibold text-slate-500">최근 사용 색상</p>
+                  <ColorHistorySwatches colors={colorHistory} onSelect={setSymbolColor} />
                 </div>
               </div>
             ) : null}
@@ -404,6 +447,10 @@ export default function CanvasToolWindowPanelClient() {
                   배경 색상
                   <input type="color" value={backgroundColor} onChange={(event) => setBackgroundColor(event.target.value)} />
                 </label>
+                <div className="flex flex-col gap-2">
+                  <p className="text-[11px] font-semibold text-slate-500">최근 사용 색상</p>
+                  <ColorHistorySwatches colors={colorHistory} onSelect={setBackgroundColor} />
+                </div>
               </div>
             ) : null}
 
@@ -514,4 +561,3 @@ export default function CanvasToolWindowPanelClient() {
     </aside>
   );
 }
-
