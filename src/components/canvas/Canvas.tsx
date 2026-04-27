@@ -25,6 +25,7 @@ type RenderCanvasContentInput = {
   context: CanvasRenderingContext2D;
   canvasWidth: number;
   canvasHeight: number;
+  canvasBackgroundColor: string;
   rows: number;
   stiches: number;
   layers: Layer[];
@@ -50,7 +51,7 @@ function renderLayerContent({
   loadedImages,
   customSymbols,
   layerMovePreview,
-}: Omit<RenderCanvasContentInput, 'canvasWidth' | 'canvasHeight' | 'includeGrid'>) {
+}: Omit<RenderCanvasContentInput, 'canvasWidth' | 'canvasHeight' | 'canvasBackgroundColor' | 'includeGrid'>) {
   for (let layerIndex = layers.length - 1; layerIndex >= 0; layerIndex -= 1) {
     const layer = layers[layerIndex];
 
@@ -166,6 +167,7 @@ function renderCanvasContent({
   context,
   canvasWidth,
   canvasHeight,
+  canvasBackgroundColor,
   rows,
   stiches,
   layers,
@@ -175,7 +177,7 @@ function renderCanvasContent({
   layerMovePreview,
 }: RenderCanvasContentInput) {
   context.clearRect(0, 0, canvasWidth, canvasHeight);
-  context.fillStyle = '#ffffff';
+  context.fillStyle = canvasBackgroundColor;
   context.fillRect(0, 0, canvasWidth, canvasHeight);
   renderLayerContent({
     context,
@@ -236,6 +238,7 @@ export default function Canvas() {
     title,
     rows,
     stiches,
+    canvasBackgroundColor,
     layers,
     activeLayerId,
     selection,
@@ -627,6 +630,7 @@ export default function Canvas() {
       context,
       canvasWidth,
       canvasHeight,
+      canvasBackgroundColor,
       rows,
       stiches,
       layers,
@@ -637,6 +641,7 @@ export default function Canvas() {
     });
   }, [
     canvasHeight,
+    canvasBackgroundColor,
     canvasWidth,
     customSymbols,
     displayHeight,
@@ -715,13 +720,14 @@ export default function Canvas() {
       title,
       rows,
       stiches,
+      canvasBackgroundColor,
       activeLayerId,
       layers,
     });
 
     latestCanvasSnapshotRef.current = serializedCanvas;
     sessionStorage.setItem(canvasSessionStorageKeys.latestSnapshot, serializedCanvas);
-  }, [activeLayerId, layers, rows, stiches, title]);
+  }, [activeLayerId, canvasBackgroundColor, layers, rows, stiches, title]);
 
   useEffect(() => {
     if (saveRequestNonce === 0 || handledSaveRequestNonceRef.current === saveRequestNonce) {
@@ -744,7 +750,7 @@ export default function Canvas() {
     exportCanvas.width = Math.max(1, Math.round(exportWidth * devicePixelRatio));
     exportCanvas.height = Math.max(1, Math.round(exportHeight * devicePixelRatio));
     exportContext.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-    exportContext.fillStyle = '#ffffff';
+    exportContext.fillStyle = canvasBackgroundColor;
     exportContext.fillRect(0, 0, exportWidth, exportHeight);
 
     exportContext.save();
@@ -753,6 +759,7 @@ export default function Canvas() {
       context: exportContext,
       canvasWidth,
       canvasHeight,
+      canvasBackgroundColor,
       rows,
       stiches,
       layers,
@@ -789,6 +796,7 @@ export default function Canvas() {
     sessionStorage.setItem(canvasSessionStorageKeys.latestSnapshot, latestCanvasSnapshotRef.current);
   }, [
     canvasHeight,
+    canvasBackgroundColor,
     canvasWidth,
     customSymbols,
     layers,

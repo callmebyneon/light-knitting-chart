@@ -64,6 +64,7 @@ function ColorHistorySwatches({ colors, onSelect }: ColorHistorySwatchesProps) {
 
 export default function CanvasToolWindowPanelClient() {
   const {
+    canvasBackgroundColor,
     layers,
     activeLayerId,
     addDrawingLayer,
@@ -79,6 +80,7 @@ export default function CanvasToolWindowPanelClient() {
     mergeLayerDown,
     fitImageLayerToCanvas,
     setImageLayerSize,
+    setCanvasBackgroundColor,
   } = useCanvasStore();
   const {
     panelMode,
@@ -531,8 +533,10 @@ export default function CanvasToolWindowPanelClient() {
             </div>
 
             <LayerStackArea
+              canvasBackgroundColor={canvasBackgroundColor}
               layers={layers}
               activeLayerId={activeLayerId}
+              setCanvasBackgroundColor={setCanvasBackgroundColor}
               setActiveLayer={setActiveLayer}
               moveLayer={moveLayer}
               toggleLayerVisibility={toggleLayerVisibility}

@@ -32,6 +32,7 @@ type CanvasStore = CanvasSnapshot & {
   resizeCanvas: (rows: number, stiches: number, origin: ResizeOrigin) => void;
   setResizeOrigin: (origin: ResizeOrigin) => void;
   setTitle: (title: string) => void;
+  setCanvasBackgroundColor: (color: string) => void;
   setSelection: (selection: CellSelection | null) => void;
   clearSelection: () => void;
   paintSymbolCell: (row: number, column: number, symbol: SymbolPlacementInput) => void;
@@ -117,6 +118,7 @@ function snapshotFromState(state: CanvasSnapshot): CanvasSnapshot {
     rows: state.rows,
     stiches: state.stiches,
     hasCanvas: state.hasCanvas,
+    canvasBackgroundColor: state.canvasBackgroundColor,
     resizeOrigin: state.resizeOrigin,
     layers: state.layers.map(cloneLayer),
     activeLayerId: state.activeLayerId,
@@ -300,6 +302,7 @@ function createInitialSnapshot(): CanvasSnapshot {
     rows,
     stiches,
     hasCanvas: true,
+    canvasBackgroundColor: '#ffffff',
     resizeOrigin: 'center',
     layers: [initialLayer],
     activeLayerId: initialLayer.id,
@@ -344,6 +347,7 @@ function updateDrawingLayer(
       rows: state.rows,
       stiches: state.stiches,
       hasCanvas: state.hasCanvas,
+      canvasBackgroundColor: state.canvasBackgroundColor,
       resizeOrigin: state.resizeOrigin,
       layers: state.layers.map((layer, index) => (index === layerIndex ? nextLayer : layer)),
       activeLayerId: state.activeLayerId,
@@ -381,6 +385,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
           rows,
           stiches,
           hasCanvas: true,
+          canvasBackgroundColor: state.canvasBackgroundColor,
           resizeOrigin: 'center',
           layers: [drawingLayer],
           activeLayerId: drawingLayer.id,
@@ -412,6 +417,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
           rows,
           stiches,
           hasCanvas: true,
+          canvasBackgroundColor: state.canvasBackgroundColor,
           resizeOrigin: origin,
           activeLayerId: state.activeLayerId,
           layers: state.layers.map((layer) => {
@@ -457,6 +463,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
     }),
   setResizeOrigin: (origin) => set({ resizeOrigin: origin }),
   setTitle: (title) => set({ title }),
+  setCanvasBackgroundColor: (canvasBackgroundColor) => set({ canvasBackgroundColor }),
   setSelection: (selection) => set({ selection: selection ? normalizeSelection(selection) : null }),
   clearSelection: () => set({ selection: null }),
   paintSymbolCell: (row, column, symbol) =>
@@ -601,6 +608,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         rows: state.rows,
         stiches: state.stiches,
         hasCanvas: state.hasCanvas,
+        canvasBackgroundColor: state.canvasBackgroundColor,
         resizeOrigin: state.resizeOrigin,
         activeLayerId: state.activeLayerId,
         layers: state.layers.map((layer) =>
@@ -628,6 +636,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
           rows: state.rows,
           stiches: state.stiches,
           hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
           resizeOrigin: state.resizeOrigin,
           activeLayerId: state.activeLayerId,
           layers: state.layers.map((layer) =>
@@ -672,6 +681,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
           rows: state.rows,
           stiches: state.stiches,
           hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
           resizeOrigin: state.resizeOrigin,
           activeLayerId: state.activeLayerId,
           layers: state.layers.map((layer) =>
@@ -854,15 +864,20 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
       const nextLayers = [...state.layers];
       nextLayers.splice(activeLayerIndex + 1, 0, duplicatedLayer);
 
-      return commitSnapshot(state, {
-        title: state.title,
-        rows: state.rows,
-        stiches: state.stiches,
-        hasCanvas: state.hasCanvas,
-        resizeOrigin: state.resizeOrigin,
-        layers: nextLayers,
-        activeLayerId: duplicatedLayer.id,
-      }, selection);
+      return commitSnapshot(
+        state,
+        {
+          title: state.title,
+          rows: state.rows,
+          stiches: state.stiches,
+          hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
+          resizeOrigin: state.resizeOrigin,
+          layers: nextLayers,
+          activeLayerId: duplicatedLayer.id,
+        },
+        selection,
+      );
     }),
   addDrawingLayer: () =>
     set((state) => {
@@ -879,6 +894,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
           rows: state.rows,
           stiches: state.stiches,
           hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
           resizeOrigin: state.resizeOrigin,
           activeLayerId: drawingLayer.id,
           layers: [...state.layers, drawingLayer],
@@ -916,6 +932,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
           rows: state.rows,
           stiches: state.stiches,
           hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
           resizeOrigin: state.resizeOrigin,
           activeLayerId: imageLayer.id,
           layers: [...state.layers, imageLayer],
@@ -937,18 +954,19 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         return state;
       }
 
-      const layers = [...state.layers];
-      const [sourceLayer] = layers.splice(sourceIndex, 1);
-      layers.splice(targetIndex, 0, sourceLayer);
+      const nextLayers = [...state.layers];
+      const [sourceLayer] = nextLayers.splice(sourceIndex, 1);
+      nextLayers.splice(targetIndex, 0, sourceLayer);
 
       return commitSnapshot(state, {
         title: state.title,
         rows: state.rows,
         stiches: state.stiches,
         hasCanvas: state.hasCanvas,
+        canvasBackgroundColor: state.canvasBackgroundColor,
         resizeOrigin: state.resizeOrigin,
         activeLayerId: state.activeLayerId,
-        layers,
+        layers: nextLayers,
       });
     }),
   toggleLayerVisibility: (layerId) =>
@@ -958,6 +976,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         rows: state.rows,
         stiches: state.stiches,
         hasCanvas: state.hasCanvas,
+        canvasBackgroundColor: state.canvasBackgroundColor,
         resizeOrigin: state.resizeOrigin,
         activeLayerId: state.activeLayerId,
         layers: state.layers.map((layer) =>
@@ -972,6 +991,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         rows: state.rows,
         stiches: state.stiches,
         hasCanvas: state.hasCanvas,
+        canvasBackgroundColor: state.canvasBackgroundColor,
         resizeOrigin: state.resizeOrigin,
         activeLayerId: state.activeLayerId,
         layers: state.layers.map((layer) =>
@@ -986,6 +1006,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         rows: state.rows,
         stiches: state.stiches,
         hasCanvas: state.hasCanvas,
+        canvasBackgroundColor: state.canvasBackgroundColor,
         resizeOrigin: state.resizeOrigin,
         activeLayerId: state.activeLayerId,
         layers: state.layers.map((layer) => (layer.id === layerId ? { ...layer, name } : layer)),
@@ -998,6 +1019,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         rows: state.rows,
         stiches: state.stiches,
         hasCanvas: state.hasCanvas,
+        canvasBackgroundColor: state.canvasBackgroundColor,
         resizeOrigin: state.resizeOrigin,
         activeLayerId: state.activeLayerId,
         layers: state.layers.map((layer) =>
@@ -1013,7 +1035,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
     ),
   deleteLayer: (layerId) =>
     set((state) => {
-      const layers = state.layers.filter((layer) => layer.id !== layerId);
+      const nextLayers = state.layers.filter((layer) => layer.id !== layerId);
 
       return commitSnapshot(
         state,
@@ -1022,9 +1044,10 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
           rows: state.rows,
           stiches: state.stiches,
           hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
           resizeOrigin: state.resizeOrigin,
-          activeLayerId: state.activeLayerId === layerId ? layers[0]?.id ?? null : state.activeLayerId,
-          layers,
+          activeLayerId: state.activeLayerId === layerId ? nextLayers[0]?.id ?? null : state.activeLayerId,
+          layers: nextLayers,
         },
         null,
       );
@@ -1052,9 +1075,9 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
               cells: sourceLayer.cells.map(cloneCell),
               placedSymbols: sourceLayer.placedSymbols.map(clonePlacedSymbol),
             };
-      const layers = [...state.layers];
+      const nextLayers = [...state.layers];
 
-      layers.splice(sourceIndex + 1, 0, duplicatedLayer);
+      nextLayers.splice(sourceIndex + 1, 0, duplicatedLayer);
 
       return commitSnapshot(
         state,
@@ -1063,9 +1086,10 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
           rows: state.rows,
           stiches: state.stiches,
           hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
           resizeOrigin: state.resizeOrigin,
           activeLayerId: duplicatedLayer.id,
-          layers,
+          layers: nextLayers,
         },
         null,
       );
@@ -1122,6 +1146,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
           rows: state.rows,
           stiches: state.stiches,
           hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
           resizeOrigin: state.resizeOrigin,
           activeLayerId: mergedLayer.id,
           layers: state.layers.flatMap((layer, index) => {
@@ -1146,6 +1171,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         rows: state.rows,
         stiches: state.stiches,
         hasCanvas: state.hasCanvas,
+        canvasBackgroundColor: state.canvasBackgroundColor,
         resizeOrigin: state.resizeOrigin,
         activeLayerId: state.activeLayerId,
         layers: state.layers.map((layer) => {
@@ -1177,6 +1203,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         rows: state.rows,
         stiches: state.stiches,
         hasCanvas: state.hasCanvas,
+        canvasBackgroundColor: state.canvasBackgroundColor,
         resizeOrigin: state.resizeOrigin,
         activeLayerId: state.activeLayerId,
         layers: state.layers.map((layer) =>

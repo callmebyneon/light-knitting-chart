@@ -59,6 +59,7 @@ export type CanvasSnapshot = {
   rows: number;
   stiches: number;
   hasCanvas: boolean;
+  canvasBackgroundColor: string;
   resizeOrigin: ResizeOrigin;
   layers: Layer[];
   activeLayerId: string | null;
