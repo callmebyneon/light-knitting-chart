@@ -13,7 +13,7 @@ import "./globals.css";
 // });
 
 export const metadata: Metadata = {
-  title: "Light Knitting Chart - LKC",
+  title: "LKC",
   description: "Make knitting chart lightly",
 };
 
