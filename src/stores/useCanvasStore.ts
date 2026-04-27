@@ -216,7 +216,7 @@ function getResizeOffsets(current: number, next: number, placement: 'start' | 'c
 function createInitialSnapshot(): CanvasSnapshot {
   const stiches = 24;
   const rows = 32;
-  const initialLayer = createDrawingLayer(stiches, rows, '드로잉 레이어 1');
+  const initialLayer = createDrawingLayer(stiches, rows, '레이어 1');
 
   return {
     title: '새 차트',
@@ -276,7 +276,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
   historyFuture: [],
   createCanvas: (rows, stiches) =>
     set((state) => {
-      const drawingLayer = createDrawingLayer(stiches, rows, '드로잉 레이어 1');
+      const drawingLayer = createDrawingLayer(stiches, rows, '레이어 1');
 
       return commitSnapshot(state, {
         title: state.title,
@@ -477,7 +477,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
       const drawingLayer = createDrawingLayer(
         state.stiches,
         state.rows,
-        `드로잉 레이어 ${state.layers.filter((layer) => layer.type === 'drawing').length + 1}`,
+        `레이어 ${state.layers.filter((layer) => layer.type === 'drawing').length + 1}`,
       );
 
       return commitSnapshot(state, {
