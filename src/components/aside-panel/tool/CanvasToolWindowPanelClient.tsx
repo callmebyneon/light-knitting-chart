@@ -286,10 +286,10 @@ export default function CanvasToolWindowPanelClient() {
                     <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
                       <span>기본 기호 선택</span>
                     </div>
-                    <div className="max-h-72 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2">
+                    <div className="max-h-72 overflow-y-auto rounded-lg border border-slate-200 bg-white">
                       {defaultSymbolGroups.map((group) => (
-                        <div key={group.key} className="mb-3 last:mb-0">
-                          <div className="sticky top-0 z-10 bg-white/95 py-1 text-[11px] font-semibold text-slate-500">
+                        <div key={group.key} className="mb-3 last:mb-0 px-2">
+                          <div className="sticky top-0 z-10 bg-white/95 py-1 pt-3 text-[11px] font-semibold text-slate-500">
                             {group.key}
                           </div>
                           <div className="grid grid-cols-2 gap-2">
