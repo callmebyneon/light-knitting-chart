@@ -4,24 +4,34 @@ import { inputClassBarebone } from '@/components/ui/sharedStyles';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useState } from 'react';
 import Modal from '../ui/widgets/Modal';
-import { Info } from 'lucide-react';
+import { FilePen, Info } from 'lucide-react';
+import Image from 'next/image';
+import { cn } from '@/lib/utils';
 
 export default function TitleAreaClient() {
   const { title, setTitle } = useCanvasStore();
+  const [ lastTit, setLastTit ] = useState(title);
   const [ isInfoOpen, setInfoOpen ] = useState(false);
 
   return (
     <header className="fixed left-0 top-0 flex gap-3 h-12 w-full items-center justify-between border-b border-slate-200 bg-white px-4">
-      <div className="flex min-w-0 items-center gap-3">
+      <h1 className='flex items-center gap-2'>
+        <Image alt='LKC_head-logo' src="/logo_264.png" width={24} height={24} />
+        <span className='font-bold text-slate-400 text-md'>Light Knitting Chart</span>
+      </h1>
+      <label className='flex items-center gap-2 mx-auto'>
+        <FilePen size={16} color='#62748e' />
         <input
           type="text"
-          defaultValue={title}
+          value={title}
+          maxLength={48}
           placeholder="저장 파일명에 현재 제목이 함께 사용됩니다"
-          onChange={(event) => setTitle(event.target.value)}
-          className={`${inputClassBarebone} min-w-80 max-w-200 font-bold`}
+          onInput={(event) => setTitle(event.currentTarget.value)}
+          onBlur={() => title.trim() === "" ? setTitle(lastTit) : setLastTit(title)}
+          className={cn(inputClassBarebone, `min-w-0 max-w-200 w-fit transition`)}
         />
-      </div>
-      <p className="text-xs text-slate-500 ml-auto">저장 파일명에 현재 제목이 함께 사용됩니다.</p>
+      </label>
+      <p className="text-xs text-slate-500">저장 파일명에 현재 제목이 함께 사용됩니다.</p>
       <button
         type="button"
         aria-label="기본 기호 참고 정보 보기"
