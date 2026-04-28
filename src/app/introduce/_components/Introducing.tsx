@@ -86,7 +86,7 @@ export default function Introducing({ mode }: IntroducingProps) {
     <div className={mode === 'page' ? 'mx-auto flex w-full max-w-4xl flex-col gap-6 px-5 py-20 sm:px-8 lg:px-10' : 'flex flex-col gap-5'}>
       <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
         <div className="flex items-start gap-4">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
+          <div className="flex h-11 w-11 aspect-square items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
             <Info className="h-5 w-5" />
           </div>
           <div className="space-y-3">
@@ -165,7 +165,10 @@ export default function Introducing({ mode }: IntroducingProps) {
         </section>
       ) : null}
 
-      <p className="text-right text-xs text-slate-400">첫 방문 안내 이후에도 우측 상단 안내 버튼으로 다시 열 수 있습니다.</p>
+      <div className='flex justify-between'>
+        <p className='text-end text-slate-300'>v0.1.2</p>
+        <p className="text-right text-xs text-slate-400">첫 방문 안내 이후에도 우측 상단 안내 버튼으로 다시 열 수 있습니다.</p>
+      </div>
     </div>
   );
 }

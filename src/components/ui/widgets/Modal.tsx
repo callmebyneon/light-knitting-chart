@@ -3,15 +3,17 @@
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type ModalProps = {
   isOpen: boolean;
   title: string;
+  wide?: boolean;
   onClose: () => void;
   children: ReactNode;
 };
 
-export default function Modal({ isOpen, title, onClose, children }: ModalProps) {
+export default function Modal({ isOpen, title, wide = false, onClose, children }: ModalProps) {
   if (!isOpen || typeof document === 'undefined') {
     return null;
   }
@@ -28,7 +30,7 @@ export default function Modal({ isOpen, title, onClose, children }: ModalProps) 
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className="relative z-10 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_24px_64px_rgba(15,23,42,0.18)]"
+        className={cn("relative z-10 w-full max-h-full max-w-screen overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_24px_64px_rgba(15,23,42,0.18)]", wide === false ? `lg:max-w-md` : `lg:max-w-3xl`)}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
