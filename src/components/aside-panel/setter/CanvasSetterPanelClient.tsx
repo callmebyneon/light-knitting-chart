@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { PanelLeftOpen } from 'lucide-react';
 
 import { iconButtonClassName, inputClassName, panelSecionTitleClassName, panelSectionClassName, panelShellClassName, primaryButtonClassName } from '@/components/ui/sharedStyles';
@@ -34,6 +34,17 @@ export default function CanvasSetterPanelClient() {
     parsedRows <= 0;
   const isCollapsed = isPortraitViewport && !isLeftPanelOpen;
 
+  useEffect(() => {
+    if (String(rows) !== inputRows) {
+      setInputRows(String(rows))
+    }
+  }, [rows])
+  useEffect(() => {
+    if (String(stiches) !== inputColumns) {
+      setInputColumns(String(stiches))
+    }
+  }, [stiches])
+  
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -84,14 +95,15 @@ export default function CanvasSetterPanelClient() {
                   코
                   <input
                     min="1"
+                    max="100"
                     step="1"
                     name="stiches"
                     inputMode="numeric"
                     pattern="[0-9]*"
                     className={inputClassName}
                     value={inputColumns}
-                    onChange={(event) => setInputColumns(event.target.value)}
-                    placeholder="24"
+                    onInput={(event) => setInputColumns(event.currentTarget.value)}
+                    placeholder="1 - 100"
                   />
                 </label>
 
@@ -99,14 +111,15 @@ export default function CanvasSetterPanelClient() {
                   단
                   <input
                     min="1"
+                    max="100"
                     step="1"
                     name="rows"
                     inputMode="numeric"
                     pattern="[0-9]*"
                     className={inputClassName}
                     value={inputRows}
-                    onChange={(event) => setInputRows(event.target.value)}
-                    placeholder="32"
+                    onInput={(event) => setInputRows(event.currentTarget.value)}
+                    placeholder="1 - 100"
                   />
                 </label>
               </div>
