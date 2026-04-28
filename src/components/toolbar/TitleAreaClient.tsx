@@ -7,18 +7,25 @@ import { cn } from '@/lib/utils';
 import { inputClassBarebone } from '@/components/ui/sharedStyles';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 
+const MIN_TITLE_INPUT_CH = 12;
+const TITLE_INPUT_PADDING_CH = 4;
+
 export default function TitleAreaClient() {
   const { title, setTitle } = useCanvasStore();
   const [lastTitle, setLastTitle] = useState(title);
 
+  const titleInputWidth = `${Math.max(title.length + TITLE_INPUT_PADDING_CH, MIN_TITLE_INPUT_CH)}ch`;
+
   return (
     <>
-      <label className="relative mx-auto flex items-center gap-2">
+      <label className="mx-auto flex items-center gap-2">
+        <FilePen size={16} color="#62748e" />
         <input
+          id="chart-name"
           type="text"
           value={title}
           maxLength={48}
-          placeholder="파일 이름으로 현재 차트 제목을 사용합니다"
+          placeholder={"제목"}
           onInput={(event) => setTitle(event.currentTarget.value)}
           onBlur={() => {
             if (title.trim() === '') {
@@ -28,9 +35,9 @@ export default function TitleAreaClient() {
 
             setLastTitle(title);
           }}
-          className={cn(inputClassBarebone, 'min-w-80 max-w-200 w-fit pr-7.5 transition lg:min-w-0')}
+          style={{ width: titleInputWidth }}
+          className={cn(inputClassBarebone, 'max-w-200 transition')}
         />
-        <FilePen size={16} color="#62748e" className="absolute top-2.5 right-2" />
       </label>
 
       <p className="hidden text-xs text-slate-500 lg:block">파일 이름으로 현재 차트 제목을 사용합니다</p>
