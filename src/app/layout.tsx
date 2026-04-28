@@ -1,6 +1,12 @@
 import type { Metadata, Viewport } from 'next';
+import { Noto_Sans_KR } from 'next/font/google'
 import { cn } from '@/lib/utils';
 import './globals.css';
+
+const notoSans = Noto_Sans_KR({ 
+  subsets: ['latin'],
+  display: 'swap', 
+})
 
 export const metadata: Metadata = {
   title: 'LKC',
@@ -11,7 +17,7 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'LKC',
   },
-};
+}
 
 export const viewport: Viewport = {
   themeColor: '#00bcff',
@@ -25,7 +31,7 @@ export default function RootLayout({
   modal?: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className={cn('h-full', 'antialiased', 'font-sans')}>
+    <html lang="ko" className={cn('h-full', 'antialiased', 'font-sans', notoSans.className)}>
       <body className="flex min-h-full flex-col">
         <div className="h-screen w-full overflow-hidden text-sm">
           {children}
