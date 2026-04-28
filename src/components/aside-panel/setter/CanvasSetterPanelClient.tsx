@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { PanelLeftOpen } from 'lucide-react';
 
 import { iconButtonClassName, inputClassName, panelSecionTitleClassName, panelSectionClassName, panelShellClassName, primaryButtonClassName } from '@/components/ui/sharedStyles';
@@ -8,7 +8,7 @@ import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useCanvasTool } from '@/stores/useCanvasTool';
 import { ResizeOrigin } from '@/types/canvas';
 
-const resizeOriginButtons: Array<{ origin: ResizeOrigin; arrow: string }> = [
+const RESIZE_ORIGIN_BUTTONS: Array<{ origin: ResizeOrigin; arrow: string }> = [
   { origin: 'top-left', arrow: '↖' },
   { origin: 'top', arrow: '↑' },
   { origin: 'top-right', arrow: '↗' },
@@ -19,6 +19,7 @@ const resizeOriginButtons: Array<{ origin: ResizeOrigin; arrow: string }> = [
   { origin: 'bottom', arrow: '↓' },
   { origin: 'bottom-right', arrow: '↘' },
 ];
+const ROWS_AND_COLUMNS_MAXIMUM = 100;
 
 export default function CanvasSetterPanelClient() {
   const { createCanvas, resizeCanvas, hasCanvas, rows, stiches, resizeOrigin, setResizeOrigin } = useCanvasStore();
@@ -31,9 +32,22 @@ export default function CanvasSetterPanelClient() {
     !Number.isInteger(parsedColumns) ||
     !Number.isInteger(parsedRows) ||
     parsedColumns <= 0 ||
-    parsedRows <= 0;
+    parsedRows <= 0 ||
+    parsedColumns > ROWS_AND_COLUMNS_MAXIMUM ||
+    parsedRows > ROWS_AND_COLUMNS_MAXIMUM;
   const isCollapsed = isPortraitViewport && !isLeftPanelOpen;
 
+  useEffect(() => {
+    if (String(rows) !== inputRows) {
+      setInputRows(String(rows))
+    }
+  }, [rows])
+  useEffect(() => {
+    if (String(stiches) !== inputColumns) {
+      setInputColumns(String(stiches))
+    }
+  }, [stiches])
+  
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -84,14 +98,15 @@ export default function CanvasSetterPanelClient() {
                   코
                   <input
                     min="1"
+                    max={ROWS_AND_COLUMNS_MAXIMUM}
                     step="1"
                     name="stiches"
                     inputMode="numeric"
                     pattern="[0-9]*"
                     className={inputClassName}
                     value={inputColumns}
-                    onChange={(event) => setInputColumns(event.target.value)}
-                    placeholder="24"
+                    onInput={(event) => setInputColumns(event.currentTarget.value)}
+                    placeholder={`1~${ROWS_AND_COLUMNS_MAXIMUM}`}
                   />
                 </label>
 
@@ -99,14 +114,15 @@ export default function CanvasSetterPanelClient() {
                   단
                   <input
                     min="1"
+                    max={ROWS_AND_COLUMNS_MAXIMUM}
                     step="1"
                     name="rows"
                     inputMode="numeric"
                     pattern="[0-9]*"
                     className={inputClassName}
                     value={inputRows}
-                    onChange={(event) => setInputRows(event.target.value)}
-                    placeholder="32"
+                    onInput={(event) => setInputRows(event.currentTarget.value)}
+                    placeholder={`1~${ROWS_AND_COLUMNS_MAXIMUM}`}
                   />
                 </label>
               </div>
@@ -117,7 +133,7 @@ export default function CanvasSetterPanelClient() {
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">확장/자르기 기준점</p>
               </div>
               <div className="grid grid-cols-3 w-33 mx-auto">
-                {resizeOriginButtons.map((button) => (
+                {RESIZE_ORIGIN_BUTTONS.map((button) => (
                   <button
                     key={button.origin}
                     type="button"

@@ -12,7 +12,7 @@ export default function CanvasArea() {
       <CanvasViewportEffects />
       <TitleArea />
       <Toolbar />
-      <main className="grid h-lvh w-full grid-cols-[auto_minmax(0,1fr)_auto] overflow-hidden bg-[#f5f5f5] text-slate-900">
+      <main className="grid h-[calc(100dvh-44px)] lg:h-dvh w-full grid-cols-[auto_minmax(0,1fr)_auto] overflow-hidden bg-[#f5f5f5] text-slate-900">
         <CanvasSetterPanel />
         <Canvas />
         <ToolIsland />

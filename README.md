@@ -105,9 +105,9 @@ npm install
 npm run dev
 ```
 
-# Domains
+# Main Domains
 
-- stiches and rows
-- canvas (with stiches/rows numbering)
-- layer types
-- multi-cell symbol
+- 코(stiches), 단(rows) : 차트의 열(columns), 행(rows)
+- 캔버스(canvas) : 차트 캔버스 (with 코/단 수 표기)
+- 레이어(layer) : 그린 차트 편집을 위해 관리되는 레이어 - types : 드로잉, 이미지, 바탕색 지정(고정)
+- 뜨개 기호 (symbols) : 대바늘 기호 차트 드로잉에 필요한 뜨개 기호들, 종류에 따라 여러개의 셀을 하나의 기호가 차지

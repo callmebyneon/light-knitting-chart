@@ -13,8 +13,8 @@ import {
   ResizeOrigin,
 } from '@/types/canvas';
 
-const blankCellColor = '#ffffff';
-const baseCellSize = 24;
+const BLANK_CELL_COLOR = '#ffffff';
+const BASE_CELL_SIZE = 24;
 
 type SymbolPlacementInput = {
   symbolId: string;
@@ -88,7 +88,7 @@ function createPlacedSymbolId() {
 
 function createBlankCell(): DrawingCell {
   return {
-    backgroundColor: blankCellColor,
+    backgroundColor: BLANK_CELL_COLOR,
   };
 }
 
@@ -358,7 +358,7 @@ function updateDrawingLayer(
 
 const initialSnapshot = createInitialSnapshot();
 
-export { blankCellColor };
+export { BLANK_CELL_COLOR as blankCellColor };
 export type {
   CanvasStore,
   CellSelection,
@@ -424,8 +424,8 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
             if (layer.type === 'image') {
               return {
                 ...layer,
-                offsetX: layer.offsetX + horizontalShift * baseCellSize,
-                offsetY: layer.offsetY + verticalShift * baseCellSize,
+                offsetX: layer.offsetX + horizontalShift * BASE_CELL_SIZE,
+                offsetY: layer.offsetY + verticalShift * BASE_CELL_SIZE,
               };
             }
 
@@ -529,7 +529,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         const index = getCellIndex(row, column, state.stiches);
         const currentCell = layer.cells[index];
 
-        if (!currentCell || currentCell.backgroundColor === blankCellColor) {
+        if (!currentCell || currentCell.backgroundColor === BLANK_CELL_COLOR) {
           return layer;
         }
 
@@ -904,8 +904,8 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
     }),
   addImageLayer: ({ name, src, thumbnail, imageWidth, imageHeight }) =>
     set((state) => {
-      const canvasWidth = state.stiches * baseCellSize;
-      const canvasHeight = state.rows * baseCellSize;
+      const canvasWidth = state.stiches * BASE_CELL_SIZE;
+      const canvasHeight = state.rows * BASE_CELL_SIZE;
       const imageFrame = getContainedImageFrame(imageWidth, imageHeight, canvasWidth, canvasHeight);
       const imageLayer: ImageLayer = {
         id: createLayerId(),
@@ -1114,7 +1114,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         cells: targetLayer.cells.map((cell, index) => {
           const sourceCell = sourceLayer.cells[index];
 
-          if (!sourceCell || sourceCell.backgroundColor === blankCellColor) {
+          if (!sourceCell || sourceCell.backgroundColor === BLANK_CELL_COLOR) {
             return cloneCell(cell);
           }
 
@@ -1182,8 +1182,8 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
           const imageFrame = getContainedImageFrame(
             layer.imageWidth,
             layer.imageHeight,
-            state.stiches * baseCellSize,
-            state.rows * baseCellSize,
+            state.stiches * BASE_CELL_SIZE,
+            state.rows * BASE_CELL_SIZE,
           );
 
           return {

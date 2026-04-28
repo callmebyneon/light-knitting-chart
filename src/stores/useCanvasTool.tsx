@@ -131,7 +131,7 @@ export const toolbarGroups: Array<{
         description: '현재 레이어 캔버스를 이동합니다.',
         label: '이동',
         cursor: 'move',
-        panelMode: 'selection',
+        panelMode: 'none', //'selection',
         action: 'activate',
       },
       {

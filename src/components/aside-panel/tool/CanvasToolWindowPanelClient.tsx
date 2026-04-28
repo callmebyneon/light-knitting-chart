@@ -19,6 +19,7 @@ import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useCanvasTool } from '@/stores/useCanvasTool';
 
 import type { CanvasSymbolOption } from './canvasSymbolTypes';
+import { cn } from '@/lib/utils';
 
 type SymbolOptionGroup = {
   key: string;
@@ -67,6 +68,8 @@ export default function CanvasToolWindowPanelClient() {
     canvasBackgroundColor,
     layers,
     activeLayerId,
+    selection,
+    clearSelection,
     addDrawingLayer,
     addImageLayer,
     setActiveLayer,
@@ -81,6 +84,9 @@ export default function CanvasToolWindowPanelClient() {
     fitImageLayerToCanvas,
     setImageLayerSize,
     setCanvasBackgroundColor,
+    flipSelectionHorizontally,
+    flipSelectionVertically,
+    duplicateSelection,
   } = useCanvasStore();
   const {
     panelMode,
@@ -139,6 +145,9 @@ export default function CanvasToolWindowPanelClient() {
     defaultCanvasSymbolOptions[0];
   const contextCustomSymbol = customSymbols.find((symbol) => symbol.id === customSymbolMenu?.symbolId) ?? null;
   const isCollapsed = isPortraitViewport && !isRightPanelOpen;
+  const activeLayer = layers.find((layer) => layer.id === activeLayerId) ?? null;
+  const isActiveDrawingLayer = activeLayer?.type === 'drawing';
+  const selectionMenuEnabled = Boolean(selection && isActiveDrawingLayer);
 
   useEffect(() => {
     if (!customSymbolMenu || !customSymbolMenuRef.current) {
@@ -286,10 +295,10 @@ export default function CanvasToolWindowPanelClient() {
                     <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
                       <span>기본 기호 선택</span>
                     </div>
-                    <div className="max-h-72 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2">
+                    <div className="max-h-72 overflow-y-auto rounded-lg border border-slate-200 bg-white">
                       {defaultSymbolGroups.map((group) => (
-                        <div key={group.key} className="mb-3 last:mb-0">
-                          <div className="sticky top-0 z-10 bg-white/95 py-1 text-[11px] font-semibold text-slate-500">
+                        <div key={group.key} className="mb-3 last:mb-0 px-2">
+                          <div className="sticky top-0 z-10 bg-white/95 py-1 pt-3 text-[11px] font-semibold text-slate-500">
                             {group.key}
                           </div>
                           <div className="grid grid-cols-2 gap-2">
@@ -497,10 +506,53 @@ export default function CanvasToolWindowPanelClient() {
 
             {panelMode === 'selection' ? (
               <div className="flex flex-col gap-3">
-                <p className="text-sm font-semibold text-slate-700">선택 / 이동</p>
+                <p className="text-sm font-semibold text-slate-700">선택</p>
                 <p className="text-xs leading-5 text-slate-500">
-                  현재는 사각형 영역만 선택할 수 있습니다. 추가 설정은 아직 제공되지 않습니다.
+                  현재는 사각형 영역만 선택할 수 있습니다. 
                 </p>
+                <div className="mx-1 w-full h-px bg-slate-200" />
+                <div className='flex flex-col gap-2'>
+                  <button
+                    type="button"
+                    className={cn(contextMenuClassName, `disabled:text-slate-200 border-slate-200`)}
+                    disabled={!selectionMenuEnabled}
+                    onClick={() => {
+                      clearSelection();
+                    }}
+                    >
+                    선택 해제
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(contextMenuClassName, `disabled:text-slate-200 border-slate-200`)}
+                    disabled={!selectionMenuEnabled}
+                    onClick={() => {
+                      flipSelectionHorizontally();
+                    }}
+                    >
+                    선택 영역 좌우 뒤집기
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(contextMenuClassName, `disabled:text-slate-200 border-slate-200`)}
+                    disabled={!selectionMenuEnabled}
+                    onClick={() => {
+                      flipSelectionVertically();
+                    }}
+                  >
+                    선택 영역 상하 뒤집기
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(contextMenuClassName, `disabled:text-slate-200 border-slate-200`)}
+                    disabled={!selection}
+                    onClick={() => {
+                      duplicateSelection();
+                    }}
+                  >
+                    선택 영역 복제
+                  </button>
+                </div>
               </div>
             ) : null}
 

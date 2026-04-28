@@ -666,7 +666,8 @@ export default function Canvas() {
   }, [scrollContentHeight, scrollContentWidth]);
 
   useEffect(() => {
-    if (activeToolId === 'selection' && isActiveDrawingLayer) {
+    if (isSelectionTool && isActiveDrawingLayer) {
+      console.log('selection tool: return')
       return;
     }
 
