@@ -17,10 +17,10 @@ export default function TitleAreaClient() {
     <header className="fixed left-0 top-0 flex gap-3 h-12 w-full items-center justify-between border-b border-slate-200 bg-white px-4">
       <h1 className='flex items-center gap-2'>
         <Image alt='LKC_head-logo' src="/logo_264.png" width={24} height={24} />
-        <span className='font-bold text-slate-400 text-md'>Light Knitting Chart</span>
+        <span className='font-bold text-slate-400 text-md hidden lg:block'>Light Knitting Chart</span>
+        <span className='font-bold text-slate-400 text-md lg:hidden'>LKC</span>
       </h1>
-      <label className='flex items-center gap-2 mx-auto'>
-        <FilePen size={16} color='#62748e' />
+      <label className='flex items-center gap-2 mx-auto relative'>
         <input
           type="text"
           value={title}
@@ -28,10 +28,11 @@ export default function TitleAreaClient() {
           placeholder="저장 파일명에 현재 제목이 함께 사용됩니다"
           onInput={(event) => setTitle(event.currentTarget.value)}
           onBlur={() => title.trim() === "" ? setTitle(lastTit) : setLastTit(title)}
-          className={cn(inputClassBarebone, `min-w-0 max-w-200 w-fit transition`)}
+          className={cn(inputClassBarebone, `min-w-80 lg:min-w-0 max-w-200 w-fit pr-7.5 transition`)}
         />
+        <FilePen size={16} color='#62748e' className='absolute right-2 top-2.5' />
       </label>
-      <p className="text-xs text-slate-500">저장 파일명에 현재 제목이 함께 사용됩니다.</p>
+      <p className="text-xs text-slate-500 hidden lg:block">저장 파일명에 현재 제목이 함께 사용됩니다.</p>
       <button
         type="button"
         aria-label="기본 기호 참고 정보 보기"

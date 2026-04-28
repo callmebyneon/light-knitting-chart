@@ -50,8 +50,8 @@ export default function ToolIsland() {
   }
 
   return (
-    <section className="pointer-events-none fixed bottom-4 left-1/2 z-20 -translate-x-1/2">
-      <div className="pointer-events-auto flex h-11 min-w-0 items-center gap-1 rounded-xl border border-slate-200 bg-white px-2 py-1.5 shadow-[0_18px_50px_rgba(15,23,42,0.12)]">
+    <section className="pointer-events-none fixed bottom-0 lg:bottom-4 left-1/2 z-20 -translate-x-1/2">
+      <div className="pointer-events-auto flex h-11 w-screen lg:w-fit min-w-0 items-center justify-center gap-1 md:rounded-xl border border-slate-200 bg-white px-2 py-1.5 shadow-[0_18px_50px_rgba(15,23,42,0.12)]">
         {historyGroup.buttons.map((button, buttonIndex) => {
           const tooltip = button.shortcut
             ? `${button.description} (${button.shortcut.label})`
