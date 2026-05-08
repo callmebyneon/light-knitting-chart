@@ -9,7 +9,7 @@ import { useColorHistory } from '@/stores/useColorHistory';
 import { useCanvasTool } from '@/stores/useCanvasTool';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 import type { Layer } from '@/types/canvas';
-import { canvasSessionStorageKeys } from '@/utils/canvasSessionStorage';
+import { canvasStorageKeys } from '@/utils/canvasStorage';
 
 const logicalCellSize = 24;
 const axisLabelWidth = 42;
@@ -727,7 +727,7 @@ export default function Canvas() {
     });
 
     latestCanvasSnapshotRef.current = serializedCanvas;
-    sessionStorage.setItem(canvasSessionStorageKeys.latestSnapshot, serializedCanvas);
+    localStorage.setItem(canvasStorageKeys.latestSnapshot, serializedCanvas);
   }, [activeLayerId, canvasBackgroundColor, layers, rows, stiches, title]);
 
   useEffect(() => {
@@ -793,8 +793,8 @@ export default function Canvas() {
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
-    sessionStorage.setItem(canvasSessionStorageKeys.latestImage, dataUrl);
-    sessionStorage.setItem(canvasSessionStorageKeys.latestSnapshot, latestCanvasSnapshotRef.current);
+    localStorage.setItem(canvasStorageKeys.latestImage, dataUrl);
+    localStorage.setItem(canvasStorageKeys.latestSnapshot, latestCanvasSnapshotRef.current);
   }, [
     canvasHeight,
     canvasBackgroundColor,
