@@ -48,6 +48,8 @@ type CanvasStore = CanvasSnapshot & {
   flipSelectionVertically: () => void;
   duplicateSelection: () => void;
   duplicateAndClearSelection: () => void;
+  fillSelectionBackground: (backgroundColor: string) => void;
+  eraseSelectionArea: (mode: 'symbol' | 'background' | 'all') => void;
   addDrawingLayer: () => void;
   addImageLayer: (payload: {
     name: string;
@@ -239,6 +241,67 @@ function clearSelectionAreaFromLayer(layer: DrawingLayer, stiches: number, selec
 
     return !shouldRemove;
   });
+
+  if (!hasChanges) {
+    return layer;
+  }
+
+  return {
+    ...layer,
+    cells: nextCells,
+    placedSymbols: nextPlacedSymbols,
+  };
+}
+
+function eraseSelectionAreaFromLayer(
+  layer: DrawingLayer,
+  stiches: number,
+  selection: CellSelection,
+  mode: 'symbol' | 'background' | 'all',
+) {
+  const normalizedSelection = normalizeSelection(selection);
+  const shouldClearSymbols = mode === 'symbol' || mode === 'all';
+  const shouldClearBackground = mode === 'background' || mode === 'all';
+  let hasChanges = false;
+
+  const nextCells = layer.cells.map((cell, cellIndex) => {
+    const row = Math.floor(cellIndex / stiches);
+    const column = cellIndex % stiches;
+
+    if (
+      row < normalizedSelection.top ||
+      row > normalizedSelection.bottom ||
+      column < normalizedSelection.left ||
+      column > normalizedSelection.right
+    ) {
+      return cell;
+    }
+
+    if (!shouldClearBackground || cell.backgroundColor === BLANK_CELL_COLOR) {
+      return cell;
+    }
+
+    hasChanges = true;
+    return createBlankCell();
+  });
+
+  const nextPlacedSymbols = shouldClearSymbols
+    ? layer.placedSymbols.filter((symbol) => {
+        const shouldRemove = symbolsOverlap(
+          normalizedSelection.top,
+          normalizedSelection.left,
+          normalizedSelection.bottom - normalizedSelection.top + 1,
+          normalizedSelection.right - normalizedSelection.left + 1,
+          symbol,
+        );
+
+        if (shouldRemove) {
+          hasChanges = true;
+        }
+
+        return !shouldRemove;
+      })
+    : layer.placedSymbols;
 
   if (!hasChanges) {
     return layer;
@@ -995,6 +1058,113 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
           activeLayerId: duplicatedLayer.id,
         },
         selection,
+      );
+    }),
+  fillSelectionBackground: (backgroundColor) =>
+    set((state) => {
+      if (!state.selection) {
+        return state;
+      }
+
+      const selection = normalizeSelection(state.selection);
+      const activeLayerIndex = state.activeLayerId ? getDrawingLayerIndex(state.layers, state.activeLayerId) : -1;
+
+      if (activeLayerIndex < 0) {
+        return state;
+      }
+
+      const activeLayer = state.layers[activeLayerIndex] as DrawingLayer;
+      let hasChanges = false;
+      const nextCells = activeLayer.cells.map((cell, cellIndex) => {
+        const row = Math.floor(cellIndex / state.stiches);
+        const column = cellIndex % state.stiches;
+
+        if (
+          row < selection.top ||
+          row > selection.bottom ||
+          column < selection.left ||
+          column > selection.right
+        ) {
+          return cell;
+        }
+
+        if (cell.backgroundColor === backgroundColor) {
+          return cell;
+        }
+
+        hasChanges = true;
+        return {
+          backgroundColor,
+        };
+      });
+
+      if (!hasChanges) {
+        return {
+          ...state,
+          selection: null,
+        };
+      }
+
+      const nextLayers = [...state.layers];
+      nextLayers[activeLayerIndex] = {
+        ...activeLayer,
+        cells: nextCells,
+      };
+
+      return commitSnapshot(
+        state,
+        {
+          title: state.title,
+          rows: state.rows,
+          stiches: state.stiches,
+          hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
+          resizeOrigin: state.resizeOrigin,
+          activeLayerId: state.activeLayerId,
+          layers: nextLayers,
+        },
+        null,
+      );
+    }),
+  eraseSelectionArea: (mode) =>
+    set((state) => {
+      if (!state.selection) {
+        return state;
+      }
+
+      const selection = normalizeSelection(state.selection);
+      const activeLayerIndex = state.activeLayerId ? getDrawingLayerIndex(state.layers, state.activeLayerId) : -1;
+
+      if (activeLayerIndex < 0) {
+        return state;
+      }
+
+      const activeLayer = state.layers[activeLayerIndex] as DrawingLayer;
+      const erasedLayer = eraseSelectionAreaFromLayer(activeLayer, state.stiches, selection, mode);
+
+      if (erasedLayer === activeLayer) {
+        return {
+          ...state,
+          selection: null,
+        };
+      }
+
+      const nextLayers = [...state.layers];
+      nextLayers[activeLayerIndex] = erasedLayer;
+
+      return commitSnapshot(
+        state,
+        {
+          title: state.title,
+          rows: state.rows,
+          stiches: state.stiches,
+          hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
+          resizeOrigin: state.resizeOrigin,
+          activeLayerId: state.activeLayerId,
+          layers: nextLayers,
+        },
+        null,
       );
     }),
   addDrawingLayer: () =>

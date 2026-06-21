@@ -248,6 +248,7 @@ export default function Canvas() {
     paintBackgroundCell,
     eraseCellSymbol,
     eraseCellBackground,
+    eraseSelectionArea,
     clearCell,
     moveActiveDrawingLayer,
     moveActiveImageLayer,
@@ -257,6 +258,7 @@ export default function Canvas() {
     flipSelectionVertically,
     duplicateSelection,
     duplicateAndClearSelection,
+    fillSelectionBackground,
   } = useCanvasStore();
   const addColorHistory = useColorHistory((state) => state.addColor);
   const {
@@ -273,7 +275,7 @@ export default function Canvas() {
     symbolColor,
     backgroundColor,
     eraserMode,
-    fillMode,
+    eraserTarget,
   } = useCanvasTool();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
@@ -343,11 +345,13 @@ export default function Canvas() {
   const activeLayer = layers.find((layer) => layer.id === activeLayerId) ?? null;
   const isActiveDrawingLayer = activeLayer?.type === 'drawing';
   const isSelectionTool = activeToolId === 'selection';
+  const isFillTool = activeToolId === 'fill';
+  const isEraserTool = activeToolId === 'eraser';
   const isMoveTool = activeToolId === 'move';
   const shouldShowCellCursor =
     activeToolId === 'symbol-brush' || activeToolId === 'background-brush' || activeToolId === 'eraser';
   const isPanMode = activeToolId === 'pan';
-  const shouldShowSelection = Boolean(selection && isActiveDrawingLayer && isSelectionTool);
+  const shouldShowSelection = Boolean(selection && isActiveDrawingLayer && (isSelectionTool || isFillTool || (isEraserTool && eraserMode === 'selection')));
   const selectionMenuEnabled = Boolean(selection && isActiveDrawingLayer);
   const activeLayerMovePreview =
     activeToolId === 'move' && activeLayerId && layerMovePreview?.layerId === activeLayerId
@@ -427,12 +431,16 @@ export default function Canvas() {
     }
 
     if (activeToolId === 'eraser') {
-      if (eraserMode === 'background') {
+      if (eraserMode !== 'cell') {
+        return;
+      }
+
+      if (eraserTarget === 'background') {
         eraseCellBackground(cell.row, cell.column);
         return;
       }
 
-      if (eraserMode === 'all') {
+      if (eraserTarget === 'all') {
         clearCell(cell.row, cell.column);
         return;
       }
@@ -441,13 +449,7 @@ export default function Canvas() {
       return;
     }
 
-    if (activeToolId === 'fill' && fillMode === 'background') {
-      addColorHistory(backgroundColor);
-      paintBackgroundCell(cell.row, cell.column, backgroundColor);
-      return;
-    }
-
-    if (activeToolId === 'symbol-brush' || activeToolId === 'fill') {
+    if (activeToolId === 'symbol-brush') {
       addColorHistory(symbolColor);
       paintSymbolCell(cell.row, cell.column, {
         symbolId: symbolOption.id,
@@ -562,6 +564,27 @@ export default function Canvas() {
     flipActiveLayerVertically();
   }
 
+  function startSelectionDrag(event: PointerEvent<HTMLCanvasElement>) {
+    const cell = getPointerCell(event.clientX, event.clientY);
+
+    if (!cell) {
+      return;
+    }
+
+    selectionDragRef.current = {
+      pointerId: event.pointerId,
+      startRow: cell.row,
+      startColumn: cell.column,
+    };
+    setSelection({
+      top: cell.row,
+      left: cell.column,
+      bottom: cell.row,
+      right: cell.column,
+    });
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
   useEffect(() => {
     if (!frameRef.current) {
       return;
@@ -667,15 +690,14 @@ export default function Canvas() {
   }, [scrollContentHeight, scrollContentWidth]);
 
   useEffect(() => {
-    if (isSelectionTool && isActiveDrawingLayer) {
-      console.log('selection tool: return')
+    if (isActiveDrawingLayer && (isSelectionTool || isFillTool || (isEraserTool && eraserMode === 'selection'))) {
       return;
     }
 
     if (selection) {
       clearSelection();
     }
-  }, [activeToolId, clearSelection, isActiveDrawingLayer, selection]);
+  }, [activeToolId, clearSelection, eraserMode, isActiveDrawingLayer, isEraserTool, isFillTool, isSelectionTool, selection]);
 
   useEffect(() => {
     if (activeToolId === 'move' && activeLayerId) {
@@ -924,25 +946,11 @@ export default function Canvas() {
                     return;
                   }
 
-                  if (isSelectionTool && isActiveDrawingLayer) {
-                    const cell = getPointerCell(event.clientX, event.clientY);
-
-                    if (!cell) {
-                      return;
-                    }
-
-                    selectionDragRef.current = {
-                      pointerId: event.pointerId,
-                      startRow: cell.row,
-                      startColumn: cell.column,
-                    };
-                    setSelection({
-                      top: cell.row,
-                      left: cell.column,
-                      bottom: cell.row,
-                      right: cell.column,
-                    });
-                    event.currentTarget.setPointerCapture(event.pointerId);
+                  if (
+                    isActiveDrawingLayer &&
+                    (isSelectionTool || isFillTool || (isEraserTool && eraserMode === 'selection'))
+                  ) {
+                    startSelectionDrag(event);
                     return;
                   }
 
@@ -1015,8 +1023,8 @@ export default function Canvas() {
                   if (
                     selectionDragRef.current &&
                     selectionDragRef.current.pointerId === event.pointerId &&
-                    isSelectionTool &&
-                    isActiveDrawingLayer
+                    isActiveDrawingLayer &&
+                    (isSelectionTool || isFillTool || (isEraserTool && eraserMode === 'selection'))
                   ) {
                     const cell = getPointerCell(event.clientX, event.clientY);
 
@@ -1091,6 +1099,15 @@ export default function Canvas() {
                   }
 
                   if (selectionDragRef.current?.pointerId === event.pointerId) {
+                    if (isActiveDrawingLayer && isFillTool) {
+                      addColorHistory(backgroundColor);
+                      fillSelectionBackground(backgroundColor);
+                    }
+
+                    if (isActiveDrawingLayer && isEraserTool && eraserMode === 'selection') {
+                      eraseSelectionArea(eraserTarget);
+                    }
+
                     trackPointerEnd(event);
                     return;
                   }
