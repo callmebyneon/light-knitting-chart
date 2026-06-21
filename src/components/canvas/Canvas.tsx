@@ -256,6 +256,7 @@ export default function Canvas() {
     flipSelectionHorizontally,
     flipSelectionVertically,
     duplicateSelection,
+    duplicateAndClearSelection,
   } = useCanvasStore();
   const addColorHistory = useColorHistory((state) => state.addColor);
   const {
@@ -1222,6 +1223,16 @@ export default function Canvas() {
                   }}
                 >
                   선택 영역 복제
+                </button>
+                <button
+                  type="button"
+                  className={contextMenuClassName}
+                  onClick={() => {
+                    duplicateAndClearSelection();
+                    setCanvasContextMenu(null);
+                  }}
+                >
+                  선택 영역 자르고 붙여넣기
                 </button>
               </>
             ) : (

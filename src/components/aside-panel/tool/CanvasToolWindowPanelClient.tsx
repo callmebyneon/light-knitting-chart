@@ -87,6 +87,7 @@ export default function CanvasToolWindowPanelClient() {
     flipSelectionHorizontally,
     flipSelectionVertically,
     duplicateSelection,
+    duplicateAndClearSelection,
   } = useCanvasStore();
   const {
     panelMode,
@@ -551,6 +552,16 @@ export default function CanvasToolWindowPanelClient() {
                     }}
                   >
                     선택 영역 복제
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(contextMenuClassName, `disabled:text-slate-200 border-slate-200`)}
+                    disabled={!selection}
+                    onClick={() => {
+                      duplicateAndClearSelection();
+                    }}
+                  >
+                    선택 영역 자르고 붙여넣기
                   </button>
                 </div>
               </div>

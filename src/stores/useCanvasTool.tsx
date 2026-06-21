@@ -102,6 +102,14 @@ export const toolbarGroups: Array<{
         action: 'activate',
       },
       {
+        id: 'fill',
+        description: '선택한 영역의 배경색을 채웁니다.',
+        label: '채우기',
+        cursor: 'crosshair',
+        panelMode: 'fill',
+        action: 'activate',
+      },
+      {
         id: 'eraser',
         description: '그려진 기호와 배경색을 지웁니다.',
         shortcut: { key: 'e', label: 'E' },
@@ -118,14 +126,6 @@ export const toolbarGroups: Array<{
         panelMode: 'selection',
         action: 'activate',
       },
-      // {
-      //   id: 'fill',
-      //   description: '선택한 영역 또는 캔버스 전체를 채웁니다.',
-      //   label: '채우기',
-      //   cursor: 'cell',
-      //   panelMode: 'fill',
-      //   action: 'activate',
-      // },
       {
         id: 'move',
         description: '현재 레이어 캔버스를 이동합니다.',

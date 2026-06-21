@@ -47,6 +47,7 @@ type CanvasStore = CanvasSnapshot & {
   flipSelectionHorizontally: () => void;
   flipSelectionVertically: () => void;
   duplicateSelection: () => void;
+  duplicateAndClearSelection: () => void;
   addDrawingLayer: () => void;
   addImageLayer: (payload: {
     name: string;
@@ -194,6 +195,60 @@ function symbolsOverlap(
     firstColumn + firstSpanColumns <= second.column ||
     second.column + second.spanColumns <= firstColumn
   );
+}
+
+function clearSelectionAreaFromLayer(layer: DrawingLayer, stiches: number, selection: CellSelection) {
+  const normalizedSelection = normalizeSelection(selection);
+  const selectionHeight = normalizedSelection.bottom - normalizedSelection.top + 1;
+  const selectionWidth = normalizedSelection.right - normalizedSelection.left + 1;
+  let hasChanges = false;
+
+  const nextCells = layer.cells.map((cell, cellIndex) => {
+    const row = Math.floor(cellIndex / stiches);
+    const column = cellIndex % stiches;
+
+    if (
+      row < normalizedSelection.top ||
+      row > normalizedSelection.bottom ||
+      column < normalizedSelection.left ||
+      column > normalizedSelection.right
+    ) {
+      return cell;
+    }
+
+    if (cell.backgroundColor === BLANK_CELL_COLOR) {
+      return cell;
+    }
+
+    hasChanges = true;
+    return createBlankCell();
+  });
+
+  const nextPlacedSymbols = layer.placedSymbols.filter((symbol) => {
+    const shouldRemove = symbolsOverlap(
+      normalizedSelection.top,
+      normalizedSelection.left,
+      selectionHeight,
+      selectionWidth,
+      symbol,
+    );
+
+    if (shouldRemove) {
+      hasChanges = true;
+    }
+
+    return !shouldRemove;
+  });
+
+  if (!hasChanges) {
+    return layer;
+  }
+
+  return {
+    ...layer,
+    cells: nextCells,
+    placedSymbols: nextPlacedSymbols,
+  };
 }
 
 function getResizeOffsets(current: number, next: number, placement: 'start' | 'center' | 'end') {
@@ -862,6 +917,69 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
       };
 
       const nextLayers = [...state.layers];
+      nextLayers.splice(activeLayerIndex + 1, 0, duplicatedLayer);
+
+      return commitSnapshot(
+        state,
+        {
+          title: state.title,
+          rows: state.rows,
+          stiches: state.stiches,
+          hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
+          resizeOrigin: state.resizeOrigin,
+          layers: nextLayers,
+          activeLayerId: duplicatedLayer.id,
+        },
+        selection,
+      );
+    }),
+  duplicateAndClearSelection: () =>
+    set((state) => {
+      if (!state.selection) {
+        return state;
+      }
+
+      const selection = normalizeSelection(state.selection);
+      const activeLayerIndex = state.activeLayerId ? getDrawingLayerIndex(state.layers, state.activeLayerId) : -1;
+
+      if (activeLayerIndex < 0) {
+        return state;
+      }
+
+      const activeLayer = state.layers[activeLayerIndex] as DrawingLayer;
+      const duplicatedLayer: DrawingLayer = {
+        ...createDrawingLayer(
+          state.stiches,
+          state.rows,
+          `${activeLayer.name} 선택 복사본`,
+        ),
+        cells: Array.from({ length: state.rows * state.stiches }, (_, index) => {
+          const row = Math.floor(index / state.stiches);
+          const column = index % state.stiches;
+
+          if (
+            row < selection.top ||
+            row > selection.bottom ||
+            column < selection.left ||
+            column > selection.right
+          ) {
+            return createBlankCell();
+          }
+
+          return cloneCell(activeLayer.cells[index] ?? createBlankCell());
+        }),
+        placedSymbols: activeLayer.placedSymbols
+          .filter((symbol) => symbolIsInsideSelection(symbol, selection))
+          .map((symbol) => ({
+            ...clonePlacedSymbol(symbol),
+            id: createPlacedSymbolId(),
+          })),
+      };
+
+      const clearedLayer = clearSelectionAreaFromLayer(activeLayer, state.stiches, selection);
+      const nextLayers = [...state.layers];
+      nextLayers.splice(activeLayerIndex, 1, clearedLayer);
       nextLayers.splice(activeLayerIndex + 1, 0, duplicatedLayer);
 
       return commitSnapshot(
