@@ -157,8 +157,12 @@ export default function LayerStackArea({
                 type="button"
                 draggable
                 aria-label={`${layer.name} 순서 변경 핸들`}
+                title="순서 변경을 위해 핸들을 클릭/터치해서 메뉴를 열거나 드래그 앤 드롭으로 순서를 변경해보세요!"
                 className="flex h-10 w-5 shrink-0 cursor-grab items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing"
-                onClick={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  openContextMenu(layer.id, event.clientX, event.clientY);
+                }}
                 onContextMenu={(event) => event.stopPropagation()}
                 onTouchStart={(event) => {
                   event.stopPropagation();
