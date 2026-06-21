@@ -31,6 +31,7 @@ export default function ToolbarClient() {
     undo,
     redo,
     reset,
+    resetGridColor,
     selection,
     activeLayerId,
     layers,
@@ -155,6 +156,7 @@ export default function ToolbarClient() {
               onClick={() => {
                 clearCanvasState();
                 clearColorHistory();
+                resetGridColor();
                 reset();
                 confirmNewCanvasReset();
               }}

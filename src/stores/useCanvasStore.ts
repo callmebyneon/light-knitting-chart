@@ -12,6 +12,7 @@ import {
   PlacedSymbol,
   ResizeOrigin,
 } from '@/types/canvas';
+import { DEFAULT_GRID_COLOR } from '@/utils/color';
 
 const BLANK_CELL_COLOR = 'transparent';
 const BASE_CELL_SIZE = 24;
@@ -33,6 +34,8 @@ type CanvasStore = CanvasSnapshot & {
   setResizeOrigin: (origin: ResizeOrigin) => void;
   setTitle: (title: string) => void;
   setCanvasBackgroundColor: (color: string) => void;
+  setGridColor: (color: string) => void;
+  resetGridColor: () => void;
   setSelection: (selection: CellSelection | null) => void;
   clearSelection: () => void;
   paintSymbolCell: (row: number, column: number, symbol: SymbolPlacementInput) => void;
@@ -122,6 +125,7 @@ function snapshotFromState(state: CanvasSnapshot): CanvasSnapshot {
     stiches: state.stiches,
     hasCanvas: state.hasCanvas,
     canvasBackgroundColor: state.canvasBackgroundColor,
+    gridColor: state.gridColor ?? DEFAULT_GRID_COLOR,
     resizeOrigin: state.resizeOrigin,
     layers: state.layers.map(cloneLayer),
     activeLayerId: state.activeLayerId,
@@ -421,6 +425,7 @@ function createInitialSnapshot(): CanvasSnapshot {
     stiches,
     hasCanvas: true,
     canvasBackgroundColor: '#ffffff',
+    gridColor: DEFAULT_GRID_COLOR,
     resizeOrigin: 'center',
     layers: [initialLayer],
     activeLayerId: initialLayer.id,
@@ -433,7 +438,7 @@ function commitSnapshot(
   selection: CellSelection | null = state.selection,
 ) {
   return {
-    ...snapshotFromState(nextSnapshot),
+    ...snapshotFromState({ ...state, ...nextSnapshot }),
     historyPast: [...state.historyPast, snapshotFromState(state)],
     historyFuture: [],
     selection,
@@ -504,6 +509,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
           stiches,
           hasCanvas: true,
           canvasBackgroundColor: state.canvasBackgroundColor,
+          gridColor: DEFAULT_GRID_COLOR,
           resizeOrigin: 'center',
           layers: [drawingLayer],
           activeLayerId: drawingLayer.id,
@@ -582,6 +588,8 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
   setResizeOrigin: (origin) => set({ resizeOrigin: origin }),
   setTitle: (title) => set({ title }),
   setCanvasBackgroundColor: (canvasBackgroundColor) => set({ canvasBackgroundColor }),
+  setGridColor: (gridColor) => set({ gridColor }),
+  resetGridColor: () => set({ gridColor: DEFAULT_GRID_COLOR }),
   setSelection: (selection) => set({ selection: selection ? normalizeSelection(selection) : null }),
   clearSelection: () => set({ selection: null }),
   paintSymbolCell: (row, column, symbol) =>

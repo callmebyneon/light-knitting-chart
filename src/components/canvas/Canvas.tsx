@@ -10,6 +10,7 @@ import { useCanvasTool } from '@/stores/useCanvasTool';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 import type { Layer } from '@/types/canvas';
 import { canvasStorageKeys } from '@/utils/canvasStorage';
+import { DEFAULT_GRID_COLOR, shiftHslLightness } from '@/utils/color';
 
 const logicalCellSize = 24;
 const axisLabelWidth = 42;
@@ -32,6 +33,7 @@ type RenderCanvasContentInput = {
   loadedImages: Record<string, HTMLImageElement>;
   customSymbols: typeof defaultCanvasSymbolOptions;
   includeGrid: boolean;
+  gridColor?: string;
   layerMovePreview?:
     | {
         layerId: string;
@@ -121,9 +123,14 @@ function renderGrid({
   canvasHeight,
   rows,
   stiches,
-}: Pick<RenderCanvasContentInput, 'context' | 'canvasWidth' | 'canvasHeight' | 'rows' | 'stiches'>) {
+  gridColor,
+}: Pick<RenderCanvasContentInput, 'context' | 'canvasWidth' | 'canvasHeight' | 'rows' | 'stiches'> & {
+  gridColor: string;
+}) {
+  const majorGridColor = gridColor || DEFAULT_GRID_COLOR;
+  const minorGridColor = shiftHslLightness(majorGridColor, 15);
   context.beginPath();
-  context.strokeStyle = '#d1d1d1';
+  context.strokeStyle = minorGridColor;
   context.lineWidth = 1;
 
   for (let row = 0; row <= rows; row += 1) {
@@ -143,7 +150,7 @@ function renderGrid({
   context.stroke();
 
   context.beginPath();
-  context.strokeStyle = '#ababab';
+  context.strokeStyle = majorGridColor;
   context.lineWidth = 1.5;
 
   for (let row = rows - 10; row > 0; row -= 10) {
@@ -174,6 +181,7 @@ function renderCanvasContent({
   loadedImages,
   customSymbols,
   includeGrid,
+  gridColor,
   layerMovePreview,
 }: RenderCanvasContentInput) {
   context.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -190,7 +198,7 @@ function renderCanvasContent({
   });
 
   if (includeGrid) {
-    renderGrid({ context, canvasWidth, canvasHeight, rows, stiches });
+    renderGrid({ context, canvasWidth, canvasHeight, rows, stiches, gridColor: gridColor ?? DEFAULT_GRID_COLOR });
   }
 }
 
@@ -250,6 +258,7 @@ export default function Canvas() {
     eraseCellBackground,
     eraseSelectionArea,
     clearCell,
+    gridColor,
     moveActiveDrawingLayer,
     moveActiveImageLayer,
     flipActiveLayerHorizontally,
@@ -661,6 +670,7 @@ export default function Canvas() {
       loadedImages,
       customSymbols,
       includeGrid: isGridVisible,
+      gridColor,
       layerMovePreview: activeLayerMovePreview ?? undefined,
     });
   }, [
@@ -678,6 +688,7 @@ export default function Canvas() {
     loadedImages,
     rows,
     stiches,
+    gridColor,
   ]);
 
   useEffect(() => {
@@ -745,13 +756,14 @@ export default function Canvas() {
       rows,
       stiches,
       canvasBackgroundColor,
+      gridColor,
       activeLayerId,
       layers,
     });
 
     latestCanvasSnapshotRef.current = serializedCanvas;
     localStorage.setItem(canvasStorageKeys.latestSnapshot, serializedCanvas);
-  }, [activeLayerId, canvasBackgroundColor, layers, rows, stiches, title]);
+  }, [activeLayerId, canvasBackgroundColor, gridColor, layers, rows, stiches, title]);
 
   useEffect(() => {
     if (saveRequestNonce === 0 || handledSaveRequestNonceRef.current === saveRequestNonce) {
@@ -790,6 +802,7 @@ export default function Canvas() {
       loadedImages,
       customSymbols,
       includeGrid: saveIncludeGrid,
+      gridColor,
     });
     exportContext.restore();
 
@@ -831,6 +844,7 @@ export default function Canvas() {
     saveRequestNonce,
     stiches,
     title,
+    gridColor,
   ]);
 
   return (
