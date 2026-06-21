@@ -153,7 +153,7 @@ export default function ToolbarClient() {
               type="button"
               className={destuctiveButtonClassName}
               onClick={() => {
-                clearCanvasSessionState();
+                clearCanvasState();
                 clearColorHistory();
                 reset();
                 confirmNewCanvasReset();

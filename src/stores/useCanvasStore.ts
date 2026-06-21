@@ -13,7 +13,7 @@ import {
   ResizeOrigin,
 } from '@/types/canvas';
 
-const BLANK_CELL_COLOR = '#ffffff';
+const BLANK_CELL_COLOR = 'transparent';
 const BASE_CELL_SIZE = 24;
 
 type SymbolPlacementInput = {

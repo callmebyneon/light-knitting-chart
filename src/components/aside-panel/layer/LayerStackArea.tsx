@@ -108,7 +108,7 @@ export default function LayerStackArea({
       <div className="flex flex-col gap-2">
         {layers.map((layer) => {
           const previewCell =
-            layer.type === 'drawing' ? layer.cells.find((cell) => cell.backgroundColor !== '#ffffff') : null;
+            layer.type === 'drawing' ? layer.cells.find((cell) => cell.backgroundColor !== 'transparent') : null;
           const previewSymbol = layer.type === 'drawing' ? layer.placedSymbols[0] ?? null : null;
           const mergeTargetIndex = layers.findIndex((candidate) => candidate.id === layer.id);
           const previousLayer = mergeTargetIndex > 0 ? layers[mergeTargetIndex - 1] : null;
@@ -188,7 +188,7 @@ export default function LayerStackArea({
                   <div
                     className="flex min-h-8 min-w-8 items-center justify-center rounded border border-slate-300 p-1 text-[10px] font-semibold"
                     style={{
-                      backgroundColor: previewCell?.backgroundColor ?? '#ffffff',
+                      backgroundColor: previewCell?.backgroundColor ?? 'transparent',
                       color: previewSymbol?.symbolColor ?? '#000000',
                     }}
                   >

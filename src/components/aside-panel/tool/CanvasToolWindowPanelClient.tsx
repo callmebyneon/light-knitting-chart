@@ -507,9 +507,9 @@ export default function CanvasToolWindowPanelClient() {
             {panelMode === 'selection' ? (
               <div className="flex flex-col gap-3">
                 <p className="text-sm font-semibold text-slate-700">선택</p>
-                <p className="text-xs leading-5 text-slate-500">
+                {/* <p className="text-xs leading-5 text-slate-500">
                   현재는 사각형 영역만 선택할 수 있습니다. 
-                </p>
+                </p> */}
                 <div className="mx-1 w-full h-px bg-slate-200" />
                 <div className='flex flex-col gap-2'>
                   <button
