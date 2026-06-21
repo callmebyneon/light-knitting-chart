@@ -4,7 +4,7 @@ import Modal from '@/components/ui/widgets/Modal';
 import ToolbarButton from '@/components/toolbar/ToolbarButton';
 import { destuctiveButtonClassName, inputClassName, primaryButtonClassName, toolbarButtonClassName } from '@/components/ui/sharedStyles';
 import { useColorHistory } from '@/stores/useColorHistory';
-import { toolbarGroups, useCanvasTool } from '@/stores/useCanvasTool';
+import { toolbarGroups, useToolStore } from '@/stores/useToolStore';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 import { clearCanvasState } from '@/utils/canvasStorage';
 
@@ -26,7 +26,7 @@ export default function ToolbarClient() {
     setSaveIncludeAxisLabels,
     zoomIn,
     zoomOut,
-  } = useCanvasTool();
+  } = useToolStore();
   const {
     undo,
     redo,

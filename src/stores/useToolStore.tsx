@@ -254,7 +254,7 @@ type CanvasToolStore = {
   showLayersPanel: () => void;
 };
 
-export const useCanvasTool = create<CanvasToolStore>((set) => ({
+export const useToolStore = create<CanvasToolStore>((set) => ({
   activeToolId: 'symbol-brush',
   panelMode: 'symbol-brush',
   cursor: 'crosshair',

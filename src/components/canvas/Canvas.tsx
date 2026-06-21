@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { defaultCanvasSymbolOptions, drawPlacedSymbol } from '@/components/aside-panel/tool/canvasSymbols';
 import { contextMenuClassName } from '@/components/ui/sharedStyles';
 import { useColorHistory } from '@/stores/useColorHistory';
-import { useCanvasTool } from '@/stores/useCanvasTool';
+import { useToolStore } from '@/stores/useToolStore';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 import type { Layer } from '@/types/canvas';
 import { canvasStorageKeys } from '@/utils/canvasStorage';
@@ -285,7 +285,7 @@ export default function Canvas() {
     backgroundColor,
     eraserMode,
     eraserTarget,
-  } = useCanvasTool();
+  } = useToolStore();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const pinchStateRef = useRef<{ distance: number; zoom: number } | null>(null);

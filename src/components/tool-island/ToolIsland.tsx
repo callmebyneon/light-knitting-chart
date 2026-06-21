@@ -5,7 +5,7 @@ import { Fullscreen, Grid3x3, Hand, Redo2, Undo2, ZoomIn, ZoomOut } from 'lucide
 
 import IconButton from '@/components/ui/widgets/IconButton';
 import { inputClassName } from '@/components/ui/sharedStyles';
-import { toolbarGroups, useCanvasTool } from '@/stores/useCanvasTool';
+import { toolbarGroups, useToolStore } from '@/stores/useToolStore';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 
 const ICON_LABEL: Record<string, ReactNode> = {
@@ -26,7 +26,7 @@ export default function ToolIsland() {
     activatePanMode,
     isGridVisible,
     toggleGridVisibility,
-  } = useCanvasTool();
+  } = useToolStore();
   const { undo, redo } = useCanvasStore();
   const historyGroup = useMemo(
     () => toolbarGroups.find((group) => group.id === 'history') ?? { id: 'history', buttons: [] },

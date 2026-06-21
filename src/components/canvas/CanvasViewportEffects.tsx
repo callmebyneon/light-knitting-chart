@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 
 import { useCanvasStore } from '@/stores/useCanvasStore';
-import { toolbarGroups, useCanvasTool } from '@/stores/useCanvasTool';
+import { toolbarGroups, useToolStore } from '@/stores/useToolStore';
 
 export default function CanvasViewportEffects() {
   const {
@@ -17,7 +17,7 @@ export default function CanvasViewportEffects() {
     flipActiveLayerHorizontally,
     flipActiveLayerVertically,
   } = useCanvasStore();
-  const { activateTool, openNewCanvasModal, requestSave, setPortraitViewport, zoomIn, zoomOut } = useCanvasTool();
+  const { activateTool, openNewCanvasModal, requestSave, setPortraitViewport, zoomIn, zoomOut } = useToolStore();
   const selectionMenuEnabled = Boolean(
     selection && layers.some((layer) => layer.id === activeLayerId && layer.type === 'drawing'),
   );

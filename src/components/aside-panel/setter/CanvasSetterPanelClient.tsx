@@ -7,7 +7,7 @@ import ColorHistorySwatches from '@/components/aside-panel/shared/ColorHistorySw
 import { iconButtonClassName, inputClassName, panelSecionTitleClassName, panelSectionClassName, panelShellClassName, primaryButtonClassName } from '@/components/ui/sharedStyles';
 import { useColorHistory } from '@/stores/useColorHistory';
 import { useCanvasStore } from '@/stores/useCanvasStore';
-import { useCanvasTool } from '@/stores/useCanvasTool';
+import { useToolStore } from '@/stores/useToolStore';
 import { ResizeOrigin } from '@/types/canvas';
 import { DEFAULT_GRID_COLOR, hexToHslString, hslStringToHex } from '@/utils/color';
 
@@ -36,7 +36,7 @@ export default function CanvasSetterPanelClient() {
     gridColor,
     setGridColor,
   } = useCanvasStore();
-  const { isPortraitViewport, isLeftPanelOpen, toggleLeftPanel } = useCanvasTool();
+  const { isPortraitViewport, isLeftPanelOpen, toggleLeftPanel } = useToolStore();
   const colorHistory = useColorHistory((state) => state.colors);
   const [inputColumns, setInputColumns] = useState(String(stiches));
   const [inputRows, setInputRows] = useState(String(rows));

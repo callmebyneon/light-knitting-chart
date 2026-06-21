@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/sharedStyles';
 import { useColorHistory } from '@/stores/useColorHistory';
 import { useCanvasStore } from '@/stores/useCanvasStore';
-import { useCanvasTool } from '@/stores/useCanvasTool';
+import { useToolStore } from '@/stores/useToolStore';
 import ColorHistorySwatches from '@/components/aside-panel/shared/ColorHistorySwatches';
 
 import type { CanvasSymbolOption } from './canvasSymbolTypes';
@@ -77,7 +77,7 @@ export default function CanvasToolWindowPanelClient() {
     setEraserMode,
     setEraserTarget,
     toggleRightPanel,
-  } = useCanvasTool();
+  } = useToolStore();
   const colorHistory = useColorHistory((state) => state.colors);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
