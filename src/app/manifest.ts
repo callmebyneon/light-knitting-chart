@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Light Knitting Chart',
     short_name: 'LKC',
-    description: 'Light Knitting Chart를 앱처럼 설치해서 가볍게 사용하는 차트 도구입니다.',
+    description: '뜨개 차트를 간단하게 그리자 | Make knitting chart lightly',
     id: '/',
     start_url: '/',
     scope: '/',
@@ -13,29 +13,34 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: '#00bcff',
     icons: [
       {
-        src: '/android-icon-192x192.png',
+        src: '/icons/android-icon-192x192.png',
         sizes: '192x192',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/android-icon-512x512.png',
+        src: '/icons/android-icon-512x512.png',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/icon.png',
+        src: '/icons/icon-32.png',
         sizes: '32x32',
         type: 'image/png',
       },
       {
-        src: '/apple-icon.png',
+        src: '/icons/icon-16.png',
+        sizes: '16x16',
+        type: 'image/png',
+      },
+      {
+        src: '/icons/apple-icon.png',
         sizes: '180x180',
         type: 'image/png',
       },
       {
-        src: '/favicon.ico',
+        src: '/icons/favicon.ico',
         sizes: 'any',
         type: 'image/x-icon',
       },
