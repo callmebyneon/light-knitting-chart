@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Noto_Sans_KR } from 'next/font/google'
 import { cn } from '@/lib/utils';
+import ServiceWorkerRegistrar from '@/components/pwa/ServiceWorkerRegistrar';
 import './globals.css';
 
 const notoSans = Noto_Sans_KR({ 
@@ -33,6 +34,7 @@ export default function RootLayout({
   return (
     <html lang="ko" className={cn('h-full', 'antialiased', 'font-sans', notoSans.className)}>
       <body className="flex min-h-full flex-col">
+        <ServiceWorkerRegistrar />
         <div className="h-screen w-full overflow-hidden text-sm">
           {children}
           {modal}
