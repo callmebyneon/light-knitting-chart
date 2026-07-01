@@ -12,16 +12,26 @@ const notoSans = Noto_Sans_KR({
 export const metadata: Metadata = {
   title: 'LKC',
   description: '뜨개 차트를 간단하게 그리자 | Make knitting chart lightly',
+  keywords: "뜨개질,도안,대바늘,배색,차트,드로잉,픽셀",
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'LKC',
   },
+  applicationName: 'LKC',
+  icons: {
+    shortcut: { url: '/favicon.ico', type: 'image/x-icon', sizes: '16x16' },
+    icon: { url: '/icon.png', type: 'image/png', sizes: '32x32' },
+    apple: { url: '/apple-icon.png', type: 'image/png', sizes: '180x180' }
+  }
 }
 
 export const viewport: Viewport = {
   themeColor: '#00bcff',
+  maximumScale: 1,
+  userScalable: false,
+  colorScheme: 'only light',
 };
 
 export default function RootLayout({

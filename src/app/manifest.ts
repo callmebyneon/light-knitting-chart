@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Light Knitting Chart',
     short_name: 'LKC',
-    description: 'Light Knitting Chart를 앱처럼 설치해서 가볍게 사용하는 차트 도구입니다.',
+    description: '뜨개 차트를 간단하게 그리자 | Make knitting chart lightly',
     id: '/',
     start_url: '/',
     scope: '/',
