@@ -87,7 +87,7 @@ export default function Introducing({ mode }: IntroducingProps) {
   const isStandalone = useSyncExternalStore(() => () => {}, isStandaloneDisplayMode, () => false);
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [isServiceWorkerReady, setIsServiceWorkerReady] = useState(false);
-  const [isInstallCardClosed, setIsInstallCardClosed] = useState(false);
+  // const [isInstallCardClosed, setIsInstallCardClosed] = useState(false);
 
   useEffect(() => {
     markIntroduceSeen();
@@ -131,27 +131,27 @@ export default function Introducing({ mode }: IntroducingProps) {
     };
   }, []);
 
+  const handleBeforeInstallPrompt = (event: Event) => {
+    event.preventDefault();
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('[PWA] beforeinstallprompt fired');
+    }
+    setInstallPromptEvent(event as BeforeInstallPromptEvent);
+    // setIsInstallCardClosed(false);
+  };
+
+  const handleAppInstalled = () => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('[PWA] appinstalled fired');
+    }
+    setInstallPromptEvent(null);
+    // setIsInstallCardClosed(true);
+  };
+
   useEffect(() => {
     if (isStandalone) {
       return;
     }
-
-    const handleBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      if (process.env.NODE_ENV !== 'production') {
-        console.debug('[PWA] beforeinstallprompt fired');
-      }
-      setInstallPromptEvent(event as BeforeInstallPromptEvent);
-      setIsInstallCardClosed(false);
-    };
-
-    const handleAppInstalled = () => {
-      if (process.env.NODE_ENV !== 'production') {
-        console.debug('[PWA] appinstalled fired');
-      }
-      setInstallPromptEvent(null);
-      setIsInstallCardClosed(true);
-    };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
@@ -168,17 +168,18 @@ export default function Introducing({ mode }: IntroducingProps) {
     }
 
     await installPromptEvent.prompt();
-    const choice = await installPromptEvent.userChoice;
-
-    setInstallPromptEvent(null);
-
-    if (choice.outcome === 'accepted') {
-      setIsInstallCardClosed(true);
+    const choiceResult = await installPromptEvent.userChoice;
+    
+    if (choiceResult.outcome === 'accepted') {
+      console.log("사용자가 설치 프롬프트에 동의했습니다.");
+      // setIsInstallCardClosed(true);
     }
+  
+    setInstallPromptEvent(null);
   };
 
   const showInstallGuide = deviceType !== 'desktop';
-  const showAndroidInstallCard = deviceType === 'android' && !isStandalone && !isInstallCardClosed && installPromptEvent !== null;
+  const showAndroidInstallCard = deviceType === 'android' && !isStandalone && installPromptEvent !== null; //&& !isInstallCardClosed
   const showDebugBadges = process.env.NODE_ENV !== 'production';
 
   return (
@@ -235,7 +236,7 @@ export default function Introducing({ mode }: IntroducingProps) {
 
       {showInstallGuide ? (
         <section className="rounded-3xl border border-sky-200 bg-sky-50 p-6">
-          <div className="flex items-start gap-4">
+          <div className="flex flex-col md:flex-row items-start gap-4">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-sky-700 shadow-sm">
               {deviceType === 'ios' ? <Share className="h-5 w-5" /> : <Smartphone className="h-5 w-5" />}
             </div>
@@ -265,39 +266,30 @@ export default function Introducing({ mode }: IntroducingProps) {
                   <>
                     {showAndroidInstallCard ? (
                       <div className="rounded-[1.5rem] border border-sky-100 bg-white p-4 shadow-sm">
-                        <div className="flex items-start gap-4">
-                          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-slate-100 shadow-sm">
+                        <div className="flex flex-col items-center gap-4">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 shadow-sm">
                             <Image
-                              src="/logo_264.png"
+                              src="/icons/android-icon-144x144.png"
                               alt="Light Knitting Chart"
-                              width={64}
-                              height={64}
-                              className="h-16 w-16 rounded-2xl object-cover"
+                              width={40}
+                              height={40}
+                              className="h-12 w-12 rounded-2xl object-cover"
                             />
                           </div>
 
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-3">
+                            <div className="flex justify-center gap-3">
                               <div className="min-w-0">
-                                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Install app</p>
-                                <h3 className="mt-1 text-lg font-semibold text-slate-950">홈 화면에 추가</h3>
+                                {/* <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Install app</p> */}
+                                {/* <h3 className="mt-1 text-lg font-semibold text-slate-950">홈 화면에 추가</h3> */}
                               </div>
-
-                              <button
-                                type="button"
-                                onClick={() => setIsInstallCardClosed(true)}
-                                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-                                aria-label="설치 안내 닫기"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
                             </div>
 
-                            <p className="mt-3 break-keep text-sm leading-6 text-slate-600">
+                            <p className="mt-3 break-keep text-sm leading-6 text-slate-600 text-center">
                               Chrome이 이 사이트를 앱으로 설치할 수 있다고 판단하면, 아래 버튼으로 바로 홈 화면에 추가할 수 있어요.
                             </p>
 
-                            <div className="mt-4 flex justify-end">
+                            <div className="mt-4 flex justify-center">
                               <button
                                 type="button"
                                 onClick={handleAndroidInstallClick}
