@@ -182,14 +182,14 @@ export default function Introducing({ mode }: IntroducingProps) {
   const showDebugBadges = process.env.NODE_ENV !== 'production';
 
   return (
-    <div className={mode === 'page' ? 'mx-auto flex w-full max-w-4xl flex-col gap-6 px-5 py-20 sm:px-8 lg:px-10' : 'flex flex-col gap-5'}>
-      <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
-        <div className="flex items-start gap-4">
+    <div id="introduction-content" className={mode === 'page' ? 'mx-auto flex w-full h-[calc(100vh-3rem)] overflow-y-auto max-w-4xl flex-col gap-6 px-5 pt-8 pb-20 lg:py-20 sm:px-8 lg:px-10' : 'flex flex-col gap-5'}>
+      <section className="rounded-3xl border border-slate-200 bg-sky-100 md:bg-white/90 p-6 shadow-sm">
+        <div className="flex flex-col items-start gap-4 md:flex-row">
           <div className="flex h-11 w-11 aspect-square items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
             <Info className="h-5 w-5" />
           </div>
-          <div className="space-y-3">
-            <h1 className="text-xl font-semibold text-slate-900">Light Knitting Chart 소개</h1>
+          <div className="space-y-1">
+            <h1 className="text-xl font-semibold text-slate-900 mb-3">Light Knitting Chart 소개</h1>
             <p className="break-keep text-sm leading-6 text-slate-600">
               Light Knitting Chart는 웹과 PC에서 편하게 사용할 수 있는 차트 관리 도구예요. 편집한 내용을 앱처럼 빠르게
               확인하고, 도안 작업에 필요한 화면을 한곳에 모아 관리할 수 있도록 만들었습니다.
@@ -334,10 +334,11 @@ export default function Introducing({ mode }: IntroducingProps) {
         </section>
       ) : null}
 
-      <div className="flex justify-between">
-        <p className="text-end text-slate-300">v0.1.2</p>
-        <p className="text-right text-xs text-slate-400">
-          설치 안내는 기기와 브라우저 상태에 따라 달라질 수 있어요. 필요하면 다시 확인할 수 있습니다.
+      <div className="flex flex-col-reverse lg:flex-row lg:justify-between">
+        <p className="mt-2 lg:mt-0 lg:text-end text-slate-300">v0.2.0</p>
+        <p className="lg:text-right text-xs text-slate-400">
+          <span>설치 안내는 기기와 브라우저 상태에 따라 달라질 수 있어요.</span>
+          {mode !== 'page' ? <span> 필요하면 다시 확인할 수 있습니다.</span> : null}
         </p>
       </div>
     </div>
