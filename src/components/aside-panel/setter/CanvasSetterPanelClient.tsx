@@ -1,12 +1,15 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useState } from 'react';
 import { PanelLeftOpen } from 'lucide-react';
 
+import ColorHistorySwatches from '@/components/aside-panel/shared/ColorHistorySwatches';
 import { iconButtonClassName, inputClassName, panelSecionTitleClassName, panelSectionClassName, panelShellClassName, primaryButtonClassName } from '@/components/ui/sharedStyles';
+import { useColorHistory } from '@/stores/useColorHistory';
 import { useCanvasStore } from '@/stores/useCanvasStore';
-import { useCanvasTool } from '@/stores/useCanvasTool';
+import { useToolStore } from '@/stores/useToolStore';
 import { ResizeOrigin } from '@/types/canvas';
+import { DEFAULT_GRID_COLOR, hexToHslString, hslStringToHex } from '@/utils/color';
 
 const RESIZE_ORIGIN_BUTTONS: Array<{ origin: ResizeOrigin; arrow: string }> = [
   { origin: 'top-left', arrow: '↖' },
@@ -22,10 +25,22 @@ const RESIZE_ORIGIN_BUTTONS: Array<{ origin: ResizeOrigin; arrow: string }> = [
 const ROWS_AND_COLUMNS_MAXIMUM = 100;
 
 export default function CanvasSetterPanelClient() {
-  const { createCanvas, resizeCanvas, hasCanvas, rows, stiches, resizeOrigin, setResizeOrigin } = useCanvasStore();
-  const { isPortraitViewport, isLeftPanelOpen, toggleLeftPanel } = useCanvasTool();
+  const {
+    createCanvas,
+    resizeCanvas,
+    hasCanvas,
+    rows,
+    stiches,
+    resizeOrigin,
+    setResizeOrigin,
+    gridColor,
+    setGridColor,
+  } = useCanvasStore();
+  const { isPortraitViewport, isLeftPanelOpen, toggleLeftPanel } = useToolStore();
+  const colorHistory = useColorHistory((state) => state.colors);
   const [inputColumns, setInputColumns] = useState(String(stiches));
   const [inputRows, setInputRows] = useState(String(rows));
+  const [gridColorDraft, setGridColorDraft] = useState(gridColor ? hslStringToHex(gridColor) ?? DEFAULT_GRID_COLOR : DEFAULT_GRID_COLOR);
   const parsedColumns = Number.parseInt(inputColumns, 10);
   const parsedRows = Number.parseInt(inputRows, 10);
   const isInvalid =
@@ -36,17 +51,6 @@ export default function CanvasSetterPanelClient() {
     parsedColumns > ROWS_AND_COLUMNS_MAXIMUM ||
     parsedRows > ROWS_AND_COLUMNS_MAXIMUM;
   const isCollapsed = isPortraitViewport && !isLeftPanelOpen;
-
-  useEffect(() => {
-    if (String(rows) !== inputRows) {
-      setInputRows(String(rows))
-    }
-  }, [rows])
-  useEffect(() => {
-    if (String(stiches) !== inputColumns) {
-      setInputColumns(String(stiches))
-    }
-  }, [stiches])
   
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -57,6 +61,8 @@ export default function CanvasSetterPanelClient() {
 
     if (!hasCanvas) {
       createCanvas(parsedRows, parsedColumns);
+      setInputRows(String(parsedRows));
+      setInputColumns(String(parsedColumns));
       return;
     }
 
@@ -68,6 +74,18 @@ export default function CanvasSetterPanelClient() {
     }
 
     resizeCanvas(parsedRows, parsedColumns, resizeOrigin);
+    setInputRows(String(parsedRows));
+    setInputColumns(String(parsedColumns));
+  }
+
+  function applyGridColor() {
+    const nextGridColor = hexToHslString(gridColorDraft);
+
+    if (!nextGridColor) {
+      return;
+    }
+
+    setGridColor(nextGridColor);
   }
 
   return (
@@ -83,7 +101,7 @@ export default function CanvasSetterPanelClient() {
       ) : (
         <>
           <div className="flex items-center justify-between">
-            <h2 className={panelSecionTitleClassName}>사이즈 조절</h2>
+            <h2 className={panelSecionTitleClassName}>캔버스 설정</h2>
             {isPortraitViewport ? (
               <button type="button" className={iconButtonClassName} onClick={toggleLeftPanel} aria-label="왼쪽 패널 접기">
                 <PanelLeftOpen className="h-5 w-5" />
@@ -91,9 +109,16 @@ export default function CanvasSetterPanelClient() {
             ) : null}
           </div>
 
+          <section className={`${panelSectionClassName}`}>
+            <p className="text-sm text-slate-600">
+              현재 캔버스: {stiches}코 x {rows}단
+            </p>
+          </section>
+
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
             <section className={panelSectionClassName}>
               <div className="flex flex-col gap-3">
+                <p className="text-sm font-semibold text-slate-700">사이즈 조절</p>
                 <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
                   코
                   <input
@@ -126,9 +151,6 @@ export default function CanvasSetterPanelClient() {
                   />
                 </label>
               </div>
-            </section>
-
-            <section className={panelSectionClassName}>
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">확장/자르기 기준점</p>
               </div>
@@ -148,18 +170,36 @@ export default function CanvasSetterPanelClient() {
                   </button>
                 ))}
               </div>
-            </section>
+              <div className="flex flex-col mt-3">
+                <button type="submit" disabled={isInvalid} className={primaryButtonClassName}>
+                  사이즈 적용
+                </button>
+              </div>
 
-            <button type="submit" disabled={isInvalid} className={primaryButtonClassName}>
-              사이즈 적용
-            </button>
+            </section>
           </form>
 
-          <div className={`${panelSectionClassName} mt-4`}>
-            <p className="text-sm text-slate-600">
-              현재 캔버스: {stiches}코 x {rows}단
-            </p>
-          </div>
+          <section className={panelSectionClassName}>
+            <div className="flex flex-col gap-3">
+              <p className="text-sm font-semibold text-slate-700">그리드 색상</p>
+              <label className="flex flex-col gap-2 text-xs text-slate-600">
+                색상 선택
+                <input
+                  type="color"
+                  value={gridColorDraft}
+                  onChange={(event) => setGridColorDraft(event.target.value)}
+                />
+              </label>
+              <button type="button" className={primaryButtonClassName} onClick={applyGridColor}>
+                색상 적용
+              </button>
+              <div className="flex flex-col gap-2">
+                <p className="text-[11px] font-semibold text-slate-500">최근 사용 색상</p>
+                <ColorHistorySwatches colors={colorHistory} onSelect={setGridColorDraft} />
+              </div>
+            </div>
+          </section>
+
         </>
       )}
     </aside>

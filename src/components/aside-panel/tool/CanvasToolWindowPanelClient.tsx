@@ -16,7 +16,8 @@ import {
 } from '@/components/ui/sharedStyles';
 import { useColorHistory } from '@/stores/useColorHistory';
 import { useCanvasStore } from '@/stores/useCanvasStore';
-import { useCanvasTool } from '@/stores/useCanvasTool';
+import { useToolStore } from '@/stores/useToolStore';
+import ColorHistorySwatches from '@/components/aside-panel/shared/ColorHistorySwatches';
 
 import type { CanvasSymbolOption } from './canvasSymbolTypes';
 import { cn } from '@/lib/utils';
@@ -27,41 +28,6 @@ type SymbolOptionGroup = {
   spanRows: number;
   symbols: CanvasSymbolOption[];
 };
-
-type ColorHistorySwatchesProps = {
-  colors: string[];
-  onSelect: (color: string) => void;
-};
-
-function ColorHistorySwatches({ colors, onSelect }: ColorHistorySwatchesProps) {
-  if (colors.length === 0) {
-    return (
-      <div className="rounded-md bg-slate-50 px-3 py-3 text-center text-xs text-slate-500">
-        아직 사용한 색상이 없습니다.
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      {colors.map((color) => (
-        <button
-          key={color}
-          type="button"
-          className="flex items-center rounded-md border border-slate-200 bg-white px-2 py-2 text-left text-xs text-slate-600 transition hover:border-sky-300 hover:text-sky-700"
-          onClick={() => onSelect(color)}
-          title={color}
-        >
-          <span
-            className="h-5 w-5 shrink-0 rounded border border-slate-200"
-            style={{ backgroundColor: color }}
-          />
-          <span className="truncate font-mono">{color}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
 
 export default function CanvasToolWindowPanelClient() {
   const {
@@ -87,6 +53,7 @@ export default function CanvasToolWindowPanelClient() {
     flipSelectionHorizontally,
     flipSelectionVertically,
     duplicateSelection,
+    duplicateAndClearSelection,
   } = useCanvasStore();
   const {
     panelMode,
@@ -97,7 +64,7 @@ export default function CanvasToolWindowPanelClient() {
     customSymbols,
     alphabetSymbolDraft,
     eraserMode,
-    fillMode,
+    eraserTarget,
     isPortraitViewport,
     isRightPanelOpen,
     setSymbolColor,
@@ -108,9 +75,9 @@ export default function CanvasToolWindowPanelClient() {
     addAlphabetSymbol,
     deleteCustomSymbol,
     setEraserMode,
-    setFillMode,
+    setEraserTarget,
     toggleRightPanel,
-  } = useCanvasTool();
+  } = useToolStore();
   const colorHistory = useColorHistory((state) => state.colors);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -466,50 +433,69 @@ export default function CanvasToolWindowPanelClient() {
             {panelMode === 'eraser' ? (
               <div className="flex flex-col gap-3">
                 <p className="text-sm font-semibold text-slate-700">지우개</p>
+                <div className="flex flex-col gap-2 text-sm text-slate-700">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      className="accent-sky-600"
+                      checked={eraserMode === 'cell'}
+                      onChange={() => setEraserMode('cell')}
+                    />
+                    셀 지우개
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      className="accent-sky-600"
+                      checked={eraserMode === 'selection'}
+                      onChange={() => setEraserMode('selection')}
+                    />
+                    선택영역 지우개
+                  </label>
+                </div>
                 <select
                   className={inputClassName}
-                  value={eraserMode}
-                  onChange={(event) => setEraserMode(event.target.value as 'symbol' | 'background' | 'area' | 'all')}
+                  value={eraserTarget}
+                  onChange={(event) => setEraserTarget(event.target.value as 'symbol' | 'background' | 'all')}
                 >
                   <option value="all">기호+배경 지우기</option>
                   <option value="symbol">기호 지우기</option>
                   <option value="background">배경 지우기</option>
                 </select>
+                {eraserMode === 'selection' ? (
+                  <p className="text-xs leading-5 text-slate-500">
+                    선택영역 지우개는 캔버스에서 사각형으로 드래그한 영역에 적용됩니다.
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
             {panelMode === 'fill' ? (
               <div className="flex flex-col gap-3">
                 <p className="text-sm font-semibold text-slate-700">영역 채우기</p>
-                <select
-                  className={inputClassName}
-                  value={fillMode}
-                  onChange={(event) => setFillMode(event.target.value as 'symbol' | 'background')}
-                >
-                  <option value="symbol">기호 채우기</option>
-                  <option value="background">배경만 채우기</option>
-                </select>
                 <label className="flex flex-col gap-2 text-xs text-slate-600">
-                  현재 색상
+                  배경 색상
                   <input
                     type="color"
-                    value={fillMode === 'symbol' ? symbolColor : backgroundColor}
-                    onChange={(event) =>
-                      fillMode === 'symbol'
-                        ? setSymbolColor(event.target.value)
-                        : setBackgroundColor(event.target.value)
-                    }
+                    value={backgroundColor}
+                    onChange={(event) => setBackgroundColor(event.target.value)}
                   />
                 </label>
+                <p className="text-xs leading-5 text-slate-500">
+                  배경색 채우기는 캔버스에서 사각형으로 드래그해 선택한 영역에 적용됩니다.
+                </p>
+                <div className="flex flex-col gap-2">
+                  <p className="text-[11px] font-semibold text-slate-500">최근 사용 색상</p>
+                  <ColorHistorySwatches colors={colorHistory} onSelect={setBackgroundColor} />
+                </div>
               </div>
             ) : null}
 
             {panelMode === 'selection' ? (
               <div className="flex flex-col gap-3">
                 <p className="text-sm font-semibold text-slate-700">선택</p>
-                <p className="text-xs leading-5 text-slate-500">
-                  현재는 사각형 영역만 선택할 수 있습니다. 
-                </p>
+                {/* <p className="text-xs leading-5 text-slate-500">
+                </p> */}
                 <div className="mx-1 w-full h-px bg-slate-200" />
                 <div className='flex flex-col gap-2'>
                   <button
@@ -551,6 +537,16 @@ export default function CanvasToolWindowPanelClient() {
                     }}
                   >
                     선택 영역 복제
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(contextMenuClassName, `disabled:text-slate-200 border-slate-200`)}
+                    disabled={!selection}
+                    onClick={() => {
+                      duplicateAndClearSelection();
+                    }}
+                  >
+                    선택 영역 자르고 붙여넣기
                   </button>
                 </div>
               </div>

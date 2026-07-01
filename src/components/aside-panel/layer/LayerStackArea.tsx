@@ -108,7 +108,7 @@ export default function LayerStackArea({
       <div className="flex flex-col gap-2">
         {layers.map((layer) => {
           const previewCell =
-            layer.type === 'drawing' ? layer.cells.find((cell) => cell.backgroundColor !== '#ffffff') : null;
+            layer.type === 'drawing' ? layer.cells.find((cell) => cell.backgroundColor !== 'transparent') : null;
           const previewSymbol = layer.type === 'drawing' ? layer.placedSymbols[0] ?? null : null;
           const mergeTargetIndex = layers.findIndex((candidate) => candidate.id === layer.id);
           const previousLayer = mergeTargetIndex > 0 ? layers[mergeTargetIndex - 1] : null;
@@ -157,8 +157,12 @@ export default function LayerStackArea({
                 type="button"
                 draggable
                 aria-label={`${layer.name} 순서 변경 핸들`}
+                title="순서 변경을 위해 핸들을 클릭/터치해서 메뉴를 열거나 드래그 앤 드롭으로 순서를 변경해보세요!"
                 className="flex h-10 w-5 shrink-0 cursor-grab items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing"
-                onClick={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  openContextMenu(layer.id, event.clientX, event.clientY);
+                }}
                 onContextMenu={(event) => event.stopPropagation()}
                 onTouchStart={(event) => {
                   event.stopPropagation();
@@ -184,7 +188,7 @@ export default function LayerStackArea({
                   <div
                     className="flex min-h-8 min-w-8 items-center justify-center rounded border border-slate-300 p-1 text-[10px] font-semibold"
                     style={{
-                      backgroundColor: previewCell?.backgroundColor ?? '#ffffff',
+                      backgroundColor: previewCell?.backgroundColor ?? 'transparent',
                       color: previewSymbol?.symbolColor ?? '#000000',
                     }}
                   >

@@ -102,6 +102,14 @@ export const toolbarGroups: Array<{
         action: 'activate',
       },
       {
+        id: 'fill',
+        description: '선택한 영역의 배경색을 채웁니다.',
+        label: '채우기',
+        cursor: 'crosshair',
+        panelMode: 'fill',
+        action: 'activate',
+      },
+      {
         id: 'eraser',
         description: '그려진 기호와 배경색을 지웁니다.',
         shortcut: { key: 'e', label: 'E' },
@@ -110,6 +118,11 @@ export const toolbarGroups: Array<{
         panelMode: 'eraser',
         action: 'activate',
       },
+    ],
+  },
+  {
+    id: 'edit',
+    buttons: [
       {
         id: 'selection',
         description: '현재 레이어에서 기호와 배경 영역을 선택합니다.',
@@ -118,14 +131,6 @@ export const toolbarGroups: Array<{
         panelMode: 'selection',
         action: 'activate',
       },
-      // {
-      //   id: 'fill',
-      //   description: '선택한 영역 또는 캔버스 전체를 채웁니다.',
-      //   label: '채우기',
-      //   cursor: 'cell',
-      //   panelMode: 'fill',
-      //   action: 'activate',
-      // },
       {
         id: 'move',
         description: '현재 레이어 캔버스를 이동합니다.',
@@ -212,7 +217,8 @@ type CanvasToolStore = {
   symbolColor: string;
   backgroundColor: string;
   selectedSymbol: string;
-  eraserMode: 'symbol' | 'background' | 'area' | 'all';
+  eraserMode: 'cell' | 'selection';
+  eraserTarget: 'symbol' | 'background' | 'all';
   fillMode: 'symbol' | 'background';
   isPortraitViewport: boolean;
   isLeftPanelOpen: boolean;
@@ -239,7 +245,8 @@ type CanvasToolStore = {
   setSymbolColor: (color: string) => void;
   setBackgroundColor: (color: string) => void;
   setSelectedSymbol: (symbol: string) => void;
-  setEraserMode: (mode: 'symbol' | 'background' | 'area' | 'all') => void;
+  setEraserMode: (mode: 'cell' | 'selection') => void;
+  setEraserTarget: (mode: 'symbol' | 'background' | 'all') => void;
   setFillMode: (mode: 'symbol' | 'background') => void;
   setPortraitViewport: (isPortraitViewport: boolean) => void;
   toggleLeftPanel: () => void;
@@ -247,7 +254,7 @@ type CanvasToolStore = {
   showLayersPanel: () => void;
 };
 
-export const useCanvasTool = create<CanvasToolStore>((set) => ({
+export const useToolStore = create<CanvasToolStore>((set) => ({
   activeToolId: 'symbol-brush',
   panelMode: 'symbol-brush',
   cursor: 'crosshair',
@@ -264,7 +271,8 @@ export const useCanvasTool = create<CanvasToolStore>((set) => ({
   symbolColor: '#000000',
   backgroundColor: '#000000',
   selectedSymbol: defaultCanvasSymbolOptions[0].id,
-  eraserMode: 'all',
+  eraserMode: 'cell',
+  eraserTarget: 'all',
   fillMode: 'background',
   isPortraitViewport: false,
   isLeftPanelOpen: true,
@@ -338,6 +346,7 @@ export const useCanvasTool = create<CanvasToolStore>((set) => ({
   setBackgroundColor: (backgroundColor) => set({ backgroundColor }),
   setSelectedSymbol: (selectedSymbol) => set({ selectedSymbol }),
   setEraserMode: (eraserMode) => set({ eraserMode }),
+  setEraserTarget: (eraserTarget) => set({ eraserTarget }),
   setFillMode: (fillMode) => set({ fillMode }),
   setPortraitViewport: (isPortraitViewport) =>
     set((state) => ({

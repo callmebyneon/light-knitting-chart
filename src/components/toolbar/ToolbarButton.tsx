@@ -1,4 +1,4 @@
-import type { CanvasToolDefinition } from '@/stores/useCanvasTool';
+import type { CanvasToolDefinition } from '@/stores/useToolStore';
 
 type ToolbarButtonProps = {
   button: CanvasToolDefinition;

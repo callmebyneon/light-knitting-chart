@@ -2,11 +2,11 @@
 
 import Modal from '@/components/ui/widgets/Modal';
 import ToolbarButton from '@/components/toolbar/ToolbarButton';
-import { inputClassName, primaryButtonClassName, toolbarButtonClassName } from '@/components/ui/sharedStyles';
+import { destuctiveButtonClassName, inputClassName, primaryButtonClassName, toolbarButtonClassName } from '@/components/ui/sharedStyles';
 import { useColorHistory } from '@/stores/useColorHistory';
-import { toolbarGroups, useCanvasTool } from '@/stores/useCanvasTool';
+import { toolbarGroups, useToolStore } from '@/stores/useToolStore';
 import { useCanvasStore } from '@/stores/useCanvasStore';
-import { clearCanvasSessionState } from '@/utils/canvasSessionStorage';
+import { clearCanvasState } from '@/utils/canvasStorage';
 
 export default function ToolbarClient() {
   const {
@@ -26,11 +26,12 @@ export default function ToolbarClient() {
     setSaveIncludeAxisLabels,
     zoomIn,
     zoomOut,
-  } = useCanvasTool();
+  } = useToolStore();
   const {
     undo,
     redo,
     reset,
+    resetGridColor,
     selection,
     activeLayerId,
     layers,
@@ -144,16 +145,18 @@ export default function ToolbarClient() {
       <Modal isOpen={isNewCanvasModalOpen} title="새 캔버스" onClose={closeNewCanvasModal}>
         <div className="flex flex-col gap-4">
           <p className="text-sm text-slate-600">모든 작업 내용을 초기화하고 새 캔버스를 만들까요?</p>
+          <p className="text-sm text-slate-600">초기화 전에 필요한 경우 지금까지의 작업 화면을 이미지로 꼭 저장해두세요.</p>
           <div className="flex justify-end gap-2">
             <button type="button" className={toolbarButtonClassName} onClick={closeNewCanvasModal}>
               취소
             </button>
             <button
               type="button"
-              className={primaryButtonClassName}
+              className={destuctiveButtonClassName}
               onClick={() => {
-                clearCanvasSessionState();
+                clearCanvasState();
                 clearColorHistory();
+                resetGridColor();
                 reset();
                 confirmNewCanvasReset();
               }}

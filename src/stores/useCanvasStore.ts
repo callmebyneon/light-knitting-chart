@@ -12,8 +12,9 @@ import {
   PlacedSymbol,
   ResizeOrigin,
 } from '@/types/canvas';
+import { DEFAULT_GRID_COLOR } from '@/utils/color';
 
-const BLANK_CELL_COLOR = '#ffffff';
+const BLANK_CELL_COLOR = 'transparent';
 const BASE_CELL_SIZE = 24;
 
 type SymbolPlacementInput = {
@@ -33,6 +34,8 @@ type CanvasStore = CanvasSnapshot & {
   setResizeOrigin: (origin: ResizeOrigin) => void;
   setTitle: (title: string) => void;
   setCanvasBackgroundColor: (color: string) => void;
+  setGridColor: (color: string) => void;
+  resetGridColor: () => void;
   setSelection: (selection: CellSelection | null) => void;
   clearSelection: () => void;
   paintSymbolCell: (row: number, column: number, symbol: SymbolPlacementInput) => void;
@@ -47,6 +50,9 @@ type CanvasStore = CanvasSnapshot & {
   flipSelectionHorizontally: () => void;
   flipSelectionVertically: () => void;
   duplicateSelection: () => void;
+  duplicateAndClearSelection: () => void;
+  fillSelectionBackground: (backgroundColor: string) => void;
+  eraseSelectionArea: (mode: 'symbol' | 'background' | 'all') => void;
   addDrawingLayer: () => void;
   addImageLayer: (payload: {
     name: string;
@@ -119,6 +125,7 @@ function snapshotFromState(state: CanvasSnapshot): CanvasSnapshot {
     stiches: state.stiches,
     hasCanvas: state.hasCanvas,
     canvasBackgroundColor: state.canvasBackgroundColor,
+    gridColor: state.gridColor ?? DEFAULT_GRID_COLOR,
     resizeOrigin: state.resizeOrigin,
     layers: state.layers.map(cloneLayer),
     activeLayerId: state.activeLayerId,
@@ -194,6 +201,121 @@ function symbolsOverlap(
     firstColumn + firstSpanColumns <= second.column ||
     second.column + second.spanColumns <= firstColumn
   );
+}
+
+function clearSelectionAreaFromLayer(layer: DrawingLayer, stiches: number, selection: CellSelection) {
+  const normalizedSelection = normalizeSelection(selection);
+  const selectionHeight = normalizedSelection.bottom - normalizedSelection.top + 1;
+  const selectionWidth = normalizedSelection.right - normalizedSelection.left + 1;
+  let hasChanges = false;
+
+  const nextCells = layer.cells.map((cell, cellIndex) => {
+    const row = Math.floor(cellIndex / stiches);
+    const column = cellIndex % stiches;
+
+    if (
+      row < normalizedSelection.top ||
+      row > normalizedSelection.bottom ||
+      column < normalizedSelection.left ||
+      column > normalizedSelection.right
+    ) {
+      return cell;
+    }
+
+    if (cell.backgroundColor === BLANK_CELL_COLOR) {
+      return cell;
+    }
+
+    hasChanges = true;
+    return createBlankCell();
+  });
+
+  const nextPlacedSymbols = layer.placedSymbols.filter((symbol) => {
+    const shouldRemove = symbolsOverlap(
+      normalizedSelection.top,
+      normalizedSelection.left,
+      selectionHeight,
+      selectionWidth,
+      symbol,
+    );
+
+    if (shouldRemove) {
+      hasChanges = true;
+    }
+
+    return !shouldRemove;
+  });
+
+  if (!hasChanges) {
+    return layer;
+  }
+
+  return {
+    ...layer,
+    cells: nextCells,
+    placedSymbols: nextPlacedSymbols,
+  };
+}
+
+function eraseSelectionAreaFromLayer(
+  layer: DrawingLayer,
+  stiches: number,
+  selection: CellSelection,
+  mode: 'symbol' | 'background' | 'all',
+) {
+  const normalizedSelection = normalizeSelection(selection);
+  const shouldClearSymbols = mode === 'symbol' || mode === 'all';
+  const shouldClearBackground = mode === 'background' || mode === 'all';
+  let hasChanges = false;
+
+  const nextCells = layer.cells.map((cell, cellIndex) => {
+    const row = Math.floor(cellIndex / stiches);
+    const column = cellIndex % stiches;
+
+    if (
+      row < normalizedSelection.top ||
+      row > normalizedSelection.bottom ||
+      column < normalizedSelection.left ||
+      column > normalizedSelection.right
+    ) {
+      return cell;
+    }
+
+    if (!shouldClearBackground || cell.backgroundColor === BLANK_CELL_COLOR) {
+      return cell;
+    }
+
+    hasChanges = true;
+    return createBlankCell();
+  });
+
+  const nextPlacedSymbols = shouldClearSymbols
+    ? layer.placedSymbols.filter((symbol) => {
+        const shouldRemove = symbolsOverlap(
+          normalizedSelection.top,
+          normalizedSelection.left,
+          normalizedSelection.bottom - normalizedSelection.top + 1,
+          normalizedSelection.right - normalizedSelection.left + 1,
+          symbol,
+        );
+
+        if (shouldRemove) {
+          hasChanges = true;
+        }
+
+        return !shouldRemove;
+      })
+    : layer.placedSymbols;
+
+  if (!hasChanges) {
+    return layer;
+  }
+
+  return {
+    ...layer,
+    cells: nextCells,
+    placedSymbols: nextPlacedSymbols,
+  };
 }
 
 function getResizeOffsets(current: number, next: number, placement: 'start' | 'center' | 'end') {
@@ -303,6 +425,7 @@ function createInitialSnapshot(): CanvasSnapshot {
     stiches,
     hasCanvas: true,
     canvasBackgroundColor: '#ffffff',
+    gridColor: DEFAULT_GRID_COLOR,
     resizeOrigin: 'center',
     layers: [initialLayer],
     activeLayerId: initialLayer.id,
@@ -315,7 +438,7 @@ function commitSnapshot(
   selection: CellSelection | null = state.selection,
 ) {
   return {
-    ...snapshotFromState(nextSnapshot),
+    ...snapshotFromState({ ...state, ...nextSnapshot }),
     historyPast: [...state.historyPast, snapshotFromState(state)],
     historyFuture: [],
     selection,
@@ -386,6 +509,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
           stiches,
           hasCanvas: true,
           canvasBackgroundColor: state.canvasBackgroundColor,
+          gridColor: DEFAULT_GRID_COLOR,
           resizeOrigin: 'center',
           layers: [drawingLayer],
           activeLayerId: drawingLayer.id,
@@ -464,6 +588,8 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
   setResizeOrigin: (origin) => set({ resizeOrigin: origin }),
   setTitle: (title) => set({ title }),
   setCanvasBackgroundColor: (canvasBackgroundColor) => set({ canvasBackgroundColor }),
+  setGridColor: (gridColor) => set({ gridColor }),
+  resetGridColor: () => set({ gridColor: DEFAULT_GRID_COLOR }),
   setSelection: (selection) => set({ selection: selection ? normalizeSelection(selection) : null }),
   clearSelection: () => set({ selection: null }),
   paintSymbolCell: (row, column, symbol) =>
@@ -877,6 +1003,176 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
           activeLayerId: duplicatedLayer.id,
         },
         selection,
+      );
+    }),
+  duplicateAndClearSelection: () =>
+    set((state) => {
+      if (!state.selection) {
+        return state;
+      }
+
+      const selection = normalizeSelection(state.selection);
+      const activeLayerIndex = state.activeLayerId ? getDrawingLayerIndex(state.layers, state.activeLayerId) : -1;
+
+      if (activeLayerIndex < 0) {
+        return state;
+      }
+
+      const activeLayer = state.layers[activeLayerIndex] as DrawingLayer;
+      const duplicatedLayer: DrawingLayer = {
+        ...createDrawingLayer(
+          state.stiches,
+          state.rows,
+          `${activeLayer.name} 선택 복사본`,
+        ),
+        cells: Array.from({ length: state.rows * state.stiches }, (_, index) => {
+          const row = Math.floor(index / state.stiches);
+          const column = index % state.stiches;
+
+          if (
+            row < selection.top ||
+            row > selection.bottom ||
+            column < selection.left ||
+            column > selection.right
+          ) {
+            return createBlankCell();
+          }
+
+          return cloneCell(activeLayer.cells[index] ?? createBlankCell());
+        }),
+        placedSymbols: activeLayer.placedSymbols
+          .filter((symbol) => symbolIsInsideSelection(symbol, selection))
+          .map((symbol) => ({
+            ...clonePlacedSymbol(symbol),
+            id: createPlacedSymbolId(),
+          })),
+      };
+
+      const clearedLayer = clearSelectionAreaFromLayer(activeLayer, state.stiches, selection);
+      const nextLayers = [...state.layers];
+      nextLayers.splice(activeLayerIndex, 1, clearedLayer);
+      nextLayers.splice(activeLayerIndex + 1, 0, duplicatedLayer);
+
+      return commitSnapshot(
+        state,
+        {
+          title: state.title,
+          rows: state.rows,
+          stiches: state.stiches,
+          hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
+          resizeOrigin: state.resizeOrigin,
+          layers: nextLayers,
+          activeLayerId: duplicatedLayer.id,
+        },
+        selection,
+      );
+    }),
+  fillSelectionBackground: (backgroundColor) =>
+    set((state) => {
+      if (!state.selection) {
+        return state;
+      }
+
+      const selection = normalizeSelection(state.selection);
+      const activeLayerIndex = state.activeLayerId ? getDrawingLayerIndex(state.layers, state.activeLayerId) : -1;
+
+      if (activeLayerIndex < 0) {
+        return state;
+      }
+
+      const activeLayer = state.layers[activeLayerIndex] as DrawingLayer;
+      let hasChanges = false;
+      const nextCells = activeLayer.cells.map((cell, cellIndex) => {
+        const row = Math.floor(cellIndex / state.stiches);
+        const column = cellIndex % state.stiches;
+
+        if (
+          row < selection.top ||
+          row > selection.bottom ||
+          column < selection.left ||
+          column > selection.right
+        ) {
+          return cell;
+        }
+
+        if (cell.backgroundColor === backgroundColor) {
+          return cell;
+        }
+
+        hasChanges = true;
+        return {
+          backgroundColor,
+        };
+      });
+
+      if (!hasChanges) {
+        return {
+          ...state,
+          selection: null,
+        };
+      }
+
+      const nextLayers = [...state.layers];
+      nextLayers[activeLayerIndex] = {
+        ...activeLayer,
+        cells: nextCells,
+      };
+
+      return commitSnapshot(
+        state,
+        {
+          title: state.title,
+          rows: state.rows,
+          stiches: state.stiches,
+          hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
+          resizeOrigin: state.resizeOrigin,
+          activeLayerId: state.activeLayerId,
+          layers: nextLayers,
+        },
+        null,
+      );
+    }),
+  eraseSelectionArea: (mode) =>
+    set((state) => {
+      if (!state.selection) {
+        return state;
+      }
+
+      const selection = normalizeSelection(state.selection);
+      const activeLayerIndex = state.activeLayerId ? getDrawingLayerIndex(state.layers, state.activeLayerId) : -1;
+
+      if (activeLayerIndex < 0) {
+        return state;
+      }
+
+      const activeLayer = state.layers[activeLayerIndex] as DrawingLayer;
+      const erasedLayer = eraseSelectionAreaFromLayer(activeLayer, state.stiches, selection, mode);
+
+      if (erasedLayer === activeLayer) {
+        return {
+          ...state,
+          selection: null,
+        };
+      }
+
+      const nextLayers = [...state.layers];
+      nextLayers[activeLayerIndex] = erasedLayer;
+
+      return commitSnapshot(
+        state,
+        {
+          title: state.title,
+          rows: state.rows,
+          stiches: state.stiches,
+          hasCanvas: state.hasCanvas,
+          canvasBackgroundColor: state.canvasBackgroundColor,
+          resizeOrigin: state.resizeOrigin,
+          activeLayerId: state.activeLayerId,
+          layers: nextLayers,
+        },
+        null,
       );
     }),
   addDrawingLayer: () =>

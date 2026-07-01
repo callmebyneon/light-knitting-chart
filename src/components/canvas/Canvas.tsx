@@ -6,10 +6,11 @@ import { useEffect, useRef, useState } from 'react';
 import { defaultCanvasSymbolOptions, drawPlacedSymbol } from '@/components/aside-panel/tool/canvasSymbols';
 import { contextMenuClassName } from '@/components/ui/sharedStyles';
 import { useColorHistory } from '@/stores/useColorHistory';
-import { useCanvasTool } from '@/stores/useCanvasTool';
+import { useToolStore } from '@/stores/useToolStore';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 import type { Layer } from '@/types/canvas';
-import { canvasSessionStorageKeys } from '@/utils/canvasSessionStorage';
+import { canvasStorageKeys } from '@/utils/canvasStorage';
+import { DEFAULT_GRID_COLOR, shiftHslLightness } from '@/utils/color';
 
 const logicalCellSize = 24;
 const axisLabelWidth = 42;
@@ -32,6 +33,7 @@ type RenderCanvasContentInput = {
   loadedImages: Record<string, HTMLImageElement>;
   customSymbols: typeof defaultCanvasSymbolOptions;
   includeGrid: boolean;
+  gridColor?: string;
   layerMovePreview?:
     | {
         layerId: string;
@@ -121,9 +123,14 @@ function renderGrid({
   canvasHeight,
   rows,
   stiches,
-}: Pick<RenderCanvasContentInput, 'context' | 'canvasWidth' | 'canvasHeight' | 'rows' | 'stiches'>) {
+  gridColor,
+}: Pick<RenderCanvasContentInput, 'context' | 'canvasWidth' | 'canvasHeight' | 'rows' | 'stiches'> & {
+  gridColor: string;
+}) {
+  const majorGridColor = gridColor || DEFAULT_GRID_COLOR;
+  const minorGridColor = shiftHslLightness(majorGridColor, 15);
   context.beginPath();
-  context.strokeStyle = '#d1d1d1';
+  context.strokeStyle = minorGridColor;
   context.lineWidth = 1;
 
   for (let row = 0; row <= rows; row += 1) {
@@ -143,7 +150,7 @@ function renderGrid({
   context.stroke();
 
   context.beginPath();
-  context.strokeStyle = '#ababab';
+  context.strokeStyle = majorGridColor;
   context.lineWidth = 1.5;
 
   for (let row = rows - 10; row > 0; row -= 10) {
@@ -174,6 +181,7 @@ function renderCanvasContent({
   loadedImages,
   customSymbols,
   includeGrid,
+  gridColor,
   layerMovePreview,
 }: RenderCanvasContentInput) {
   context.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -190,7 +198,7 @@ function renderCanvasContent({
   });
 
   if (includeGrid) {
-    renderGrid({ context, canvasWidth, canvasHeight, rows, stiches });
+    renderGrid({ context, canvasWidth, canvasHeight, rows, stiches, gridColor: gridColor ?? DEFAULT_GRID_COLOR });
   }
 }
 
@@ -248,7 +256,9 @@ export default function Canvas() {
     paintBackgroundCell,
     eraseCellSymbol,
     eraseCellBackground,
+    eraseSelectionArea,
     clearCell,
+    gridColor,
     moveActiveDrawingLayer,
     moveActiveImageLayer,
     flipActiveLayerHorizontally,
@@ -256,6 +266,8 @@ export default function Canvas() {
     flipSelectionHorizontally,
     flipSelectionVertically,
     duplicateSelection,
+    duplicateAndClearSelection,
+    fillSelectionBackground,
   } = useCanvasStore();
   const addColorHistory = useColorHistory((state) => state.addColor);
   const {
@@ -272,8 +284,8 @@ export default function Canvas() {
     symbolColor,
     backgroundColor,
     eraserMode,
-    fillMode,
-  } = useCanvasTool();
+    eraserTarget,
+  } = useToolStore();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const pinchStateRef = useRef<{ distance: number; zoom: number } | null>(null);
@@ -342,11 +354,13 @@ export default function Canvas() {
   const activeLayer = layers.find((layer) => layer.id === activeLayerId) ?? null;
   const isActiveDrawingLayer = activeLayer?.type === 'drawing';
   const isSelectionTool = activeToolId === 'selection';
+  const isFillTool = activeToolId === 'fill';
+  const isEraserTool = activeToolId === 'eraser';
   const isMoveTool = activeToolId === 'move';
   const shouldShowCellCursor =
     activeToolId === 'symbol-brush' || activeToolId === 'background-brush' || activeToolId === 'eraser';
   const isPanMode = activeToolId === 'pan';
-  const shouldShowSelection = Boolean(selection && isActiveDrawingLayer && isSelectionTool);
+  const shouldShowSelection = Boolean(selection && isActiveDrawingLayer && (isSelectionTool || isFillTool || (isEraserTool && eraserMode === 'selection')));
   const selectionMenuEnabled = Boolean(selection && isActiveDrawingLayer);
   const activeLayerMovePreview =
     activeToolId === 'move' && activeLayerId && layerMovePreview?.layerId === activeLayerId
@@ -426,12 +440,16 @@ export default function Canvas() {
     }
 
     if (activeToolId === 'eraser') {
-      if (eraserMode === 'background') {
+      if (eraserMode !== 'cell') {
+        return;
+      }
+
+      if (eraserTarget === 'background') {
         eraseCellBackground(cell.row, cell.column);
         return;
       }
 
-      if (eraserMode === 'all') {
+      if (eraserTarget === 'all') {
         clearCell(cell.row, cell.column);
         return;
       }
@@ -440,13 +458,7 @@ export default function Canvas() {
       return;
     }
 
-    if (activeToolId === 'fill' && fillMode === 'background') {
-      addColorHistory(backgroundColor);
-      paintBackgroundCell(cell.row, cell.column, backgroundColor);
-      return;
-    }
-
-    if (activeToolId === 'symbol-brush' || activeToolId === 'fill') {
+    if (activeToolId === 'symbol-brush') {
       addColorHistory(symbolColor);
       paintSymbolCell(cell.row, cell.column, {
         symbolId: symbolOption.id,
@@ -561,6 +573,27 @@ export default function Canvas() {
     flipActiveLayerVertically();
   }
 
+  function startSelectionDrag(event: PointerEvent<HTMLCanvasElement>) {
+    const cell = getPointerCell(event.clientX, event.clientY);
+
+    if (!cell) {
+      return;
+    }
+
+    selectionDragRef.current = {
+      pointerId: event.pointerId,
+      startRow: cell.row,
+      startColumn: cell.column,
+    };
+    setSelection({
+      top: cell.row,
+      left: cell.column,
+      bottom: cell.row,
+      right: cell.column,
+    });
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
   useEffect(() => {
     if (!frameRef.current) {
       return;
@@ -637,6 +670,7 @@ export default function Canvas() {
       loadedImages,
       customSymbols,
       includeGrid: isGridVisible,
+      gridColor,
       layerMovePreview: activeLayerMovePreview ?? undefined,
     });
   }, [
@@ -654,6 +688,7 @@ export default function Canvas() {
     loadedImages,
     rows,
     stiches,
+    gridColor,
   ]);
 
   useEffect(() => {
@@ -666,15 +701,14 @@ export default function Canvas() {
   }, [scrollContentHeight, scrollContentWidth]);
 
   useEffect(() => {
-    if (isSelectionTool && isActiveDrawingLayer) {
-      console.log('selection tool: return')
+    if (isActiveDrawingLayer && (isSelectionTool || isFillTool || (isEraserTool && eraserMode === 'selection'))) {
       return;
     }
 
     if (selection) {
       clearSelection();
     }
-  }, [activeToolId, clearSelection, isActiveDrawingLayer, selection]);
+  }, [activeToolId, clearSelection, eraserMode, isActiveDrawingLayer, isEraserTool, isFillTool, isSelectionTool, selection]);
 
   useEffect(() => {
     if (activeToolId === 'move' && activeLayerId) {
@@ -722,13 +756,14 @@ export default function Canvas() {
       rows,
       stiches,
       canvasBackgroundColor,
+      gridColor,
       activeLayerId,
       layers,
     });
 
     latestCanvasSnapshotRef.current = serializedCanvas;
-    sessionStorage.setItem(canvasSessionStorageKeys.latestSnapshot, serializedCanvas);
-  }, [activeLayerId, canvasBackgroundColor, layers, rows, stiches, title]);
+    localStorage.setItem(canvasStorageKeys.latestSnapshot, serializedCanvas);
+  }, [activeLayerId, canvasBackgroundColor, gridColor, layers, rows, stiches, title]);
 
   useEffect(() => {
     if (saveRequestNonce === 0 || handledSaveRequestNonceRef.current === saveRequestNonce) {
@@ -767,6 +802,7 @@ export default function Canvas() {
       loadedImages,
       customSymbols,
       includeGrid: saveIncludeGrid,
+      gridColor,
     });
     exportContext.restore();
 
@@ -793,8 +829,8 @@ export default function Canvas() {
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
-    sessionStorage.setItem(canvasSessionStorageKeys.latestImage, dataUrl);
-    sessionStorage.setItem(canvasSessionStorageKeys.latestSnapshot, latestCanvasSnapshotRef.current);
+    localStorage.setItem(canvasStorageKeys.latestImage, dataUrl);
+    localStorage.setItem(canvasStorageKeys.latestSnapshot, latestCanvasSnapshotRef.current);
   }, [
     canvasHeight,
     canvasBackgroundColor,
@@ -808,6 +844,7 @@ export default function Canvas() {
     saveRequestNonce,
     stiches,
     title,
+    gridColor,
   ]);
 
   return (
@@ -923,25 +960,11 @@ export default function Canvas() {
                     return;
                   }
 
-                  if (isSelectionTool && isActiveDrawingLayer) {
-                    const cell = getPointerCell(event.clientX, event.clientY);
-
-                    if (!cell) {
-                      return;
-                    }
-
-                    selectionDragRef.current = {
-                      pointerId: event.pointerId,
-                      startRow: cell.row,
-                      startColumn: cell.column,
-                    };
-                    setSelection({
-                      top: cell.row,
-                      left: cell.column,
-                      bottom: cell.row,
-                      right: cell.column,
-                    });
-                    event.currentTarget.setPointerCapture(event.pointerId);
+                  if (
+                    isActiveDrawingLayer &&
+                    (isSelectionTool || isFillTool || (isEraserTool && eraserMode === 'selection'))
+                  ) {
+                    startSelectionDrag(event);
                     return;
                   }
 
@@ -1014,8 +1037,8 @@ export default function Canvas() {
                   if (
                     selectionDragRef.current &&
                     selectionDragRef.current.pointerId === event.pointerId &&
-                    isSelectionTool &&
-                    isActiveDrawingLayer
+                    isActiveDrawingLayer &&
+                    (isSelectionTool || isFillTool || (isEraserTool && eraserMode === 'selection'))
                   ) {
                     const cell = getPointerCell(event.clientX, event.clientY);
 
@@ -1090,6 +1113,15 @@ export default function Canvas() {
                   }
 
                   if (selectionDragRef.current?.pointerId === event.pointerId) {
+                    if (isActiveDrawingLayer && isFillTool) {
+                      addColorHistory(backgroundColor);
+                      fillSelectionBackground(backgroundColor);
+                    }
+
+                    if (isActiveDrawingLayer && isEraserTool && eraserMode === 'selection') {
+                      eraseSelectionArea(eraserTarget);
+                    }
+
                     trackPointerEnd(event);
                     return;
                   }
@@ -1222,6 +1254,16 @@ export default function Canvas() {
                   }}
                 >
                   선택 영역 복제
+                </button>
+                <button
+                  type="button"
+                  className={contextMenuClassName}
+                  onClick={() => {
+                    duplicateAndClearSelection();
+                    setCanvasContextMenu(null);
+                  }}
+                >
+                  선택 영역 자르고 붙여넣기
                 </button>
               </>
             ) : (

@@ -1,7 +1,8 @@
 'use client';
 
-import { Download, Info, Monitor, Smartphone, Tablet } from 'lucide-react';
-import { useEffect, useSyncExternalStore } from 'react';
+import Image from 'next/image';
+import { Download, Info, Monitor, Share, Smartphone, Tablet, X } from 'lucide-react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 
 export const INTRODUCE_STORAGE_KEY = 'lkc:introduce-seen';
 
@@ -9,6 +10,14 @@ export type IntroduceDeviceType = 'desktop' | 'ios' | 'android' | 'other-mobile'
 
 type IntroducingProps = {
   mode: 'page' | 'modal';
+};
+
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
 };
 
 function isStandaloneDisplayMode() {
@@ -75,12 +84,102 @@ export default function Introducing({ mode }: IntroducingProps) {
     getIntroduceDeviceType,
     () => 'desktop',
   );
+  const isStandalone = useSyncExternalStore(() => () => {}, isStandaloneDisplayMode, () => false);
+  const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isServiceWorkerReady, setIsServiceWorkerReady] = useState(false);
+  const [isInstallCardClosed, setIsInstallCardClosed] = useState(false);
 
   useEffect(() => {
     markIntroduceSeen();
   }, []);
 
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const updateServiceWorkerStatus = async () => {
+      const registration = await navigator.serviceWorker.getRegistration('/');
+
+      if (isCancelled) {
+        return;
+      }
+
+      setIsServiceWorkerReady(Boolean(registration));
+
+      if (process.env.NODE_ENV !== 'production') {
+        console.debug('[PWA] service worker status', {
+          hasRegistration: Boolean(registration),
+          hasController: Boolean(navigator.serviceWorker.controller),
+        });
+      }
+    };
+
+    void updateServiceWorkerStatus();
+
+    const handleControllerChange = () => {
+      setIsServiceWorkerReady(true);
+    };
+
+    navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+
+    return () => {
+      isCancelled = true;
+      navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isStandalone) {
+      return;
+    }
+
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      if (process.env.NODE_ENV !== 'production') {
+        console.debug('[PWA] beforeinstallprompt fired');
+      }
+      setInstallPromptEvent(event as BeforeInstallPromptEvent);
+      setIsInstallCardClosed(false);
+    };
+
+    const handleAppInstalled = () => {
+      if (process.env.NODE_ENV !== 'production') {
+        console.debug('[PWA] appinstalled fired');
+      }
+      setInstallPromptEvent(null);
+      setIsInstallCardClosed(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, [isStandalone]);
+
+  const handleAndroidInstallClick = async () => {
+    if (!installPromptEvent) {
+      return;
+    }
+
+    await installPromptEvent.prompt();
+    const choice = await installPromptEvent.userChoice;
+
+    setInstallPromptEvent(null);
+
+    if (choice.outcome === 'accepted') {
+      setIsInstallCardClosed(true);
+    }
+  };
+
   const showInstallGuide = deviceType !== 'desktop';
+  const showAndroidInstallCard = deviceType === 'android' && !isStandalone && !isInstallCardClosed && installPromptEvent !== null;
+  const showDebugBadges = process.env.NODE_ENV !== 'production';
 
   return (
     <div className={mode === 'page' ? 'mx-auto flex w-full max-w-4xl flex-col gap-6 px-5 py-20 sm:px-8 lg:px-10' : 'flex flex-col gap-5'}>
@@ -92,12 +191,11 @@ export default function Introducing({ mode }: IntroducingProps) {
           <div className="space-y-3">
             <h1 className="text-xl font-semibold text-slate-900">Light Knitting Chart 소개</h1>
             <p className="break-keep text-sm leading-6 text-slate-600">
-              Light Knitting Chart는 태블릿과 PC에서 가볍게 대바늘 도안을 그리고, 레이어를 나눠 관리하고, 이미지를 참고
-              레이어로 올려 정리할 수 있도록 만든 차트 편집 앱입니다.
+              Light Knitting Chart는 웹과 PC에서 편하게 사용할 수 있는 차트 관리 도구예요. 편집한 내용을 앱처럼 빠르게
+              확인하고, 도안 작업에 필요한 화면을 한곳에 모아 관리할 수 있도록 만들었습니다.
             </p>
             <p className="break-keep text-sm leading-6 text-slate-600">
-              기호 브러시, 배경 채우기, 선택과 반전, 레이어 분리, PNG 저장까지 한 화면 안에서 빠르게 이어서 작업할 수
-              있게 구성했습니다.
+              기호 배경 색, PNG 아이콘 크기, 편집 화면 구성까지 실제 사용 흐름을 먼저 생각해서 정리했습니다.
             </p>
           </div>
         </div>
@@ -108,9 +206,9 @@ export default function Introducing({ mode }: IntroducingProps) {
           <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-slate-700 shadow-sm">
             <Tablet className="h-5 w-5" />
           </div>
-          <h2 className="text-sm font-semibold text-slate-900">터치 중심 작업</h2>
+          <h2 className="text-sm font-semibold text-slate-900">태블릿 중심 작업</h2>
           <p className="mt-2 break-keep text-sm leading-6 text-slate-600">
-            태블릿을 기본 화면으로 두고, 두 손가락 핀치 줌과 손 이동 모드까지 고려해서 캔버스를 다룰 수 있습니다.
+            태블릿 가로 화면을 기본 기준으로 두고, 손가락 터치와 확대, 이동 같은 조작을 먼저 고려해 설계했습니다.
           </p>
         </div>
 
@@ -118,9 +216,9 @@ export default function Introducing({ mode }: IntroducingProps) {
           <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-slate-700 shadow-sm">
             <Monitor className="h-5 w-5" />
           </div>
-          <h2 className="text-sm font-semibold text-slate-900">레이어 기반 편집</h2>
+          <h2 className="text-sm font-semibold text-slate-900">웹 기반 편집</h2>
           <p className="mt-2 break-keep text-sm leading-6 text-slate-600">
-            드로잉 레이어와 이미지 레이어를 구분해 관리하고, 필요한 부분만 선택하거나 복제해 도안을 정리할 수 있습니다.
+            브라우저에서 바로 실행되며, 필요한 부분만 빠르게 확인하고 편집할 수 있도록 화면을 단순하게 구성했습니다.
           </p>
         </div>
 
@@ -128,10 +226,9 @@ export default function Introducing({ mode }: IntroducingProps) {
           <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-slate-700 shadow-sm">
             <Download className="h-5 w-5" />
           </div>
-          <h2 className="text-sm font-semibold text-slate-900">이미지 저장</h2>
+          <h2 className="text-sm font-semibold text-slate-900">앱처럼 설치</h2>
           <p className="mt-2 break-keep text-sm leading-6 text-slate-600">
-            그리드와 코·단 수 표시 포함 여부를 정해서 결과 이미지를 저장하고, 같은 탭 안에서는 작업 상태도 이어서 복원할
-            수 있습니다.
+            설치 가능한 환경에서는 홈 화면에 추가해 앱처럼 실행할 수 있도록 PWA 설치 흐름을 지원합니다.
           </p>
         </div>
       </section>
@@ -140,34 +237,108 @@ export default function Introducing({ mode }: IntroducingProps) {
         <section className="rounded-3xl border border-sky-200 bg-sky-50 p-6">
           <div className="flex items-start gap-4">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-sky-700 shadow-sm">
-              {deviceType === 'ios' ? <Smartphone className="h-5 w-5" /> : <Download className="h-5 w-5" />}
+              {deviceType === 'ios' ? <Share className="h-5 w-5" /> : <Smartphone className="h-5 w-5" />}
             </div>
-            <div className="space-y-3">
-              <h2 className="text-base font-semibold text-sky-950">기기에 앱처럼 설치해서 사용할 수 있어요</h2>
-              {deviceType === 'ios' ? (
-                <p className="break-keep text-sm leading-6 text-sky-900">
-                  iPhone 또는 iPad Safari에서는 공유 버튼을 누른 뒤 <strong>홈 화면에 추가</strong>를 선택하면 앱처럼
-                  바로 실행할 수 있습니다.
+
+            <div className="min-w-0 flex-1 space-y-4">
+              <div className="space-y-2">
+                <h2 className="text-base font-semibold text-sky-950">기기에 설치해서 사용해 보세요</h2>
+                {showDebugBadges ? (
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full border border-sky-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-sky-700">
+                      prompt: {installPromptEvent ? 'ready' : 'waiting'}
+                    </span>
+                    <span className="rounded-full border border-sky-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-sky-700">
+                      sw: {isServiceWorkerReady ? 'ready' : 'missing'}
+                    </span>
+                    <span className="rounded-full border border-sky-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-sky-700">
+                      mode: {isStandalone ? 'standalone' : 'browser'}
+                    </span>
+                  </div>
+                ) : null}
+                {deviceType === 'ios' ? (
+                  <p className="break-keep text-sm leading-6 text-sky-900">
+                    iPhone 또는 iPad의 Safari에서는 공유 버튼을 누른 뒤 <strong>홈 화면에 추가</strong>를 선택하면 바로
+                    설치할 수 있어요.
+                  </p>
+                ) : deviceType === 'android' ? (
+                  <>
+                    {showAndroidInstallCard ? (
+                      <div className="rounded-[1.5rem] border border-sky-100 bg-white p-4 shadow-sm">
+                        <div className="flex items-start gap-4">
+                          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-slate-100 shadow-sm">
+                            <Image
+                              src="/logo_264.png"
+                              alt="Light Knitting Chart"
+                              width={64}
+                              height={64}
+                              className="h-16 w-16 rounded-2xl object-cover"
+                            />
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Install app</p>
+                                <h3 className="mt-1 text-lg font-semibold text-slate-950">홈 화면에 추가</h3>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => setIsInstallCardClosed(true)}
+                                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                                aria-label="설치 안내 닫기"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+
+                            <p className="mt-3 break-keep text-sm leading-6 text-slate-600">
+                              Chrome이 이 사이트를 앱으로 설치할 수 있다고 판단하면, 아래 버튼으로 바로 홈 화면에 추가할 수 있어요.
+                            </p>
+
+                            <div className="mt-4 flex justify-end">
+                              <button
+                                type="button"
+                                onClick={handleAndroidInstallClick}
+                                className="inline-flex items-center justify-center rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-400 active:bg-sky-600"
+                              >
+                                홈 화면에 추가
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="break-keep text-sm leading-6 text-sky-900">
+                        Android Chrome에서는 설치 가능한 조건이 갖춰지면 <strong>홈 화면에 추가</strong> 버튼이 자동으로 나타납니다.
+                        아직 버튼이 보이지 않으면, 이 페이지를 조금 더 둘러보거나 Chrome 메뉴에서 설치를 확인해 주세요.
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="break-keep text-sm leading-6 text-sky-900">
+                    모바일 브라우저의 메뉴에서 <strong>홈 화면에 추가</strong> 또는 <strong>앱 설치</strong>를 선택하면
+                    설치할 수 있어요.
+                  </p>
+                )}
+              </div>
+
+              {deviceType === 'android' && !showAndroidInstallCard ? (
+                <p className="text-xs leading-5 text-sky-700">
+                  설치 조건이 충족되면 Chrome이 자동으로 설치 가능 상태를 알려줍니다. 그때 이 카드의 버튼으로 바로 진행할 수 있어요.
                 </p>
-              ) : deviceType === 'android' ? (
-                <p className="break-keep text-sm leading-6 text-sky-900">
-                  Android Chrome 계열 브라우저에서는 메뉴를 열고 <strong>앱 설치</strong> 또는 <strong>홈 화면에
-                  추가</strong>를 선택해 빠르게 실행할 수 있습니다.
-                </p>
-              ) : (
-                <p className="break-keep text-sm leading-6 text-sky-900">
-                  모바일 브라우저 메뉴에서 <strong>홈 화면에 추가</strong> 또는 <strong>앱 설치</strong> 항목을 선택해
-                  앱처럼 꺼내 쓸 수 있습니다.
-                </p>
-              )}
+              ) : null}
             </div>
           </div>
         </section>
       ) : null}
 
-      <div className='flex justify-between'>
-        <p className='text-end text-slate-300'>v0.1.2</p>
-        <p className="text-right text-xs text-slate-400">첫 방문 안내 이후에도 우측 상단 안내 버튼으로 다시 열 수 있습니다.</p>
+      <div className="flex justify-between">
+        <p className="text-end text-slate-300">v0.1.2</p>
+        <p className="text-right text-xs text-slate-400">
+          설치 안내는 기기와 브라우저 상태에 따라 달라질 수 있어요. 필요하면 다시 확인할 수 있습니다.
+        </p>
       </div>
     </div>
   );

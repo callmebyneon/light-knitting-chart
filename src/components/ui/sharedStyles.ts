@@ -20,6 +20,9 @@ export const buttonClassName =
 export const primaryButtonClassName =
   cn(buttonClassBarebone, 'bg-sky-400 px-4 font-semibold text-white hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-slate-300');
 
+export const destuctiveButtonClassName = 
+  cn(buttonClassBarebone, 'bg-red-500 px-4 font-semibold, text-white hover:bg-red-300 disabled:cursor-nor-allowed disabled:bg-slate-300');
+  
 export const iconButtonClassName =
   cn(buttonClassBarebone, 'flex h-10 w-10 items-center justify-center border-slate-200 hover:border-sky-300 hover:text-sky-700');
 
