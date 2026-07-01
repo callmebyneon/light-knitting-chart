@@ -21,9 +21,13 @@ export const metadata: Metadata = {
   },
   applicationName: 'LKC',
   icons: {
-    shortcut: { url: '/favicon.ico', type: 'image/x-icon', sizes: '16x16' },
-    icon: { url: '/icon.png', type: 'image/png', sizes: '32x32' },
-    apple: { url: '/apple-icon.png', type: 'image/png', sizes: '180x180' }
+    shortcut: { url: '/icons/icon-16.png', type: 'image/png', sizes: '16x16' },
+    icon: [
+      { url: '/icons/icon-32.png', type: 'image/png', sizes: '32x32' },
+      { url: '/icons/android-icon-192x192.png', type: 'image/png', sizes: '192x192' },
+      { url: '/icons/android-icon-512x512.png', type: 'image/png', sizes: '512x512' },
+    ],
+    apple: { url: '/icons/apple-icon.png', type: 'image/png', sizes: '180x180' }
   }
 }
 
